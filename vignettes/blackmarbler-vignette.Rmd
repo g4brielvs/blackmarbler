@@ -10,7 +10,7 @@ output:
     toc_float: true
 vignette: >
   %\VignetteEngine{knitr::knitr}
-  %\VignetteIndexEntry{Google Traffic}
+  %\VignetteIndexEntry{blackmarbler}
   %\VignetteEncoding{UTF-8}
 #vignette: >
 #  %\VignetteEngine{knitr::knitr}

@@ -1,3 +1,13 @@
 ^blackmarbler\.Rproj$
 ^\.Rproj\.user$
 ^\.github$
+readme_figures
+readme_figures/build_package.R
+readme_figures/figures_for_readme.R
+readme_figures/make_hex.R
+LICENSE.md
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+vignettes
+vignettes/blackmarbler-vignette.Rmd

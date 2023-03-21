@@ -13,6 +13,18 @@ if(F){
   library(lubridate)
 }
 
+#' Black Marble Tile Grid Shapefile
+#' A dataset containing black marble grid tiles.
+#'
+#' @name bm_tiles_sf
+#' @docType data
+#' @usage data(bm_tiles_sf)
+#' @format Sf polygon with 648 features
+#' @author Robert Marty \email{rmarty@worldbank.org}
+#' @references \url{https://blackmarble.gsfc.nasa.gov/}
+#' @keywords datasets
+NULL
+
 month_start_day_to_month <- function(x){
   
   month <- NA
@@ -94,8 +106,8 @@ file_to_raster <- function(f,
     
     tile_i <- f %>% str_extract("h\\d{2}v\\d{2}")
     
-    grid_sf <- read_sf("https://raw.githubusercontent.com/ramarty/blackmarbler/main/data/blackmarbletiles.geojson")
-    grid_i_sf <- grid_sf[grid_sf$TileID %in% tile_i,]
+    bm_tiles_sf <- read_sf("https://raw.githubusercontent.com/ramarty/blackmarbler/main/data/blackmarbletiles.geojson")
+    grid_i_sf <- bm_tiles_sf[bm_tiles_sf$TileID %in% tile_i,]
     
     grid_i_sf_box <- grid_i_sf %>%
       st_bbox()
@@ -176,7 +188,8 @@ read_bm_csv <- function(year,
   #print(paste0("Reading: ", product_id, "/", year, "/", day))
   df_out <- tryCatch(
     {
-      df <- read.csv(paste0("https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/",product_id,"/",year,"/",day,".csv"))
+      df <- readr::read_csv(paste0("https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/",product_id,"/",year,"/",day,".csv"),
+                            show_col_types = F)
       
       df$year <- year
       df$day <- day
@@ -349,21 +362,31 @@ download_raster <- function(file_name,
 #' @import furrr
 #' @import stringr
 #' @import rhdf5
-#' @import raster
 #' @import dplyr
 #' @import sf
 #' @import lubridate
+#' @import readr
+#' @import exactextractr
+#' @rawNamespace import(raster, except = c(union, select, intersect, origin, tail, head))
+
+# @rawNamespace import(utils, except = c(stack, unstack))
 
 bm_raster <- function(roi_sf,
                       product_id,
                       date,
                       bearer,
-                      variable = NULL){
+                      variable = NULL,
+                      output_type = "raster", # raster, aggregation
+                      output_location_type = "file", # r_memory, file
+                      aggregation_fun = c("mean"),
+                      file_dir = NULL,
+                      file_prefix = NULL,
+                      file_skip_if_exists = TRUE){
   
   # Checks ---------------------------------------------------------------------
-  if(nrow(roi_sf) > 1){
-    stop("roi must be 1 row")
-  }
+  #if(nrow(roi_sf) > 1){
+  #  stop("roi must be 1 row")
+  #}
   
   if(!("sf" %in% class(roi_sf))){
     stop("roi must be an sf object")
@@ -395,15 +418,77 @@ bm_raster <- function(roi_sf,
           date_name_i <- paste0("t", date_i %>% str_replace_all("-", "_") %>% substring(1,4))
         }
         
-        r <- bm_raster_i(roi_sf = roi_sf,
-                         product_id = product_id,
-                         date = date_i,
-                         bearer = bearer,
-                         variable = variable)
+        #### If save as tif format
+        if(output_location_type == "file"){
+          out_name <- paste0(file_prefix, product_id, "_", date_name_i, 
+                             ifelse(output_type == "raster", 
+                                    ".tif",
+                                    ".Rds"))
+          out_path <- file.path(file_dir, out_name)
+          
+          make_raster <- TRUE
+          if(file_skip_if_exists & file.exists(out_path)) make_raster <- FALSE
+          
+          if(make_raster){
+
+            r <- bm_raster_i(roi_sf = roi_sf,
+                             product_id = product_id,
+                             date = date_i,
+                             bearer = bearer,
+                             variable = variable)
+            names(r) <- date_name_i
+            
+            if(output_type == "aggregation"){
+              r_agg <- exact_extract(x = r, y = roi_sf, fun = aggregation_fun)
+              roi_df <- roi_sf
+              roi_df$geometry <- NULL
+              
+              if(length(aggregation_fun) > 1){
+                names(r_agg) <- paste0("ntl_", names(r_agg))
+                r_agg <- bind_cols(r_agg, roi_df)
+              } else{
+                roi_df$ntl <- r_out
+                r_agg <- roi_df
+              }
+              r_agg$date <- date_i
+              
+              saveRDS(r_agg, out_path)
+              
+            } else{
+              writeRaster(r, out_path)
+            }
+            
+          } else{
+            cat(paste0('"', out_path, '" already exists; skipping.'))
+          }
+          
+          r_out <- NULL # Saving as tif file, so output from function should be NULL
+          
+        } else{
+          r_out <- bm_raster_i(roi_sf = roi_sf,
+                               product_id = product_id,
+                               date = date_i,
+                               bearer = bearer,
+                               variable = variable)
+          names(r_out) <- date_name_i
+          
+          if(output_type == "aggregation"){
+            r_out <- exact_extract(x = r_out, y = roi_sf, fun = aggregation_fun)
+            roi_df <- roi_sf
+            roi_df$geometry <- NULL
+            
+            if(length(aggregation_fun) > 1){
+              names(r_out) <- paste0("ntl_", names(r_out))
+              r_out <- bind_cols(r_out, roi_df)
+            } else{
+              roi_df$ntl <- r_out
+              r_out <- roi_df
+            }
+            r_out$date <- date_i
+          }
+        }
         
-        names(r) <- date_name_i
-        
-        return(r)
+        return(r_out)
         
       },
       error=function(e) {
@@ -417,12 +502,18 @@ bm_raster <- function(roi_sf,
   # Remove NULLs
   r_list <- r_list[!sapply(r_list,is.null)]
   
-  if(length(r_list) == 1){
-    r <- r_list[[1]]
-  } else if (length(r_list) > 1){
-    r <- stack(r_list)
+  if(output_type == "aggregation"){
+    r <- r_list %>%
+      bind_rows()
   } else{
-    r <- NULL
+    
+    if(length(r_list) == 1){
+      r <- r_list[[1]]
+    } else if (length(r_list) > 1){
+      r <- raster::stack(r_list)
+    } else{
+      r <- NULL
+    }
   }
   
   return(r)
@@ -435,7 +526,7 @@ bm_raster_i <- function(roi_sf,
                         variable){
   
   # Black marble grid ----------------------------------------------------------
-  grid_sf <- read_sf("https://raw.githubusercontent.com/ramarty/download_blackmarble/main/data/blackmarbletiles.geojson")
+  bm_tiles_sf <- read_sf("https://raw.githubusercontent.com/ramarty/download_blackmarble/main/data/blackmarbletiles.geojson")
   
   # Prep dates -----------------------------------------------------------------
   ## For monthly, allow both yyyy-mm and yyyy-mm-dd (where -dd is ignored)
@@ -464,6 +555,8 @@ bm_raster_i <- function(roi_sf,
   month <- date %>% month()
   day   <- date %>% yday()
   
+  print(day)
+  
   bm_files_df <- create_dataset_name_df(product_id = product_id,
                                         all = T, 
                                         years = year,
@@ -472,11 +565,24 @@ bm_raster_i <- function(roi_sf,
   
   # Intersecting tiles ---------------------------------------------------------
   # Remove grid along edges, which causes st_intersects to fail
-  grid_sf <- grid_sf[!(grid_sf$TileID %>% str_detect("h00")),]
-  grid_sf <- grid_sf[!(grid_sf$TileID %>% str_detect("v00")),]
+  bm_tiles_sf <- bm_tiles_sf[!(bm_tiles_sf$TileID %>% str_detect("h00")),]
+  bm_tiles_sf <- bm_tiles_sf[!(bm_tiles_sf$TileID %>% str_detect("v00")),]
   
-  inter <- st_intersects(grid_sf, roi_sf, sparse = F) %>% as.vector()
-  grid_use_sf <- grid_sf[inter,]
+  ## If roi is more than one row, combine
+  if(nrow(roi_sf) > 1){
+    roi_1row_sf <- roi_sf %>%
+      st_union() %>%
+      st_as_sf()
+  } else{
+    roi_1row_sf <- roi_sf 
+  }
+  
+  roi_1row_sf <<- roi_1row_sf
+  bm_tiles_sf <<- bm_tiles_sf
+  
+  
+  inter <- st_intersects(bm_tiles_sf, roi_1row_sf, sparse = F) %>% as.vector()
+  grid_use_sf <- bm_tiles_sf[inter,]
   
   # Make Raster ----------------------------------------------------------------
   tile_ids_rx <- grid_use_sf$TileID %>% paste(collapse = "|")
