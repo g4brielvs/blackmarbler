@@ -2,6 +2,7 @@
 
 export(bm_raster)
 import(dplyr)
+import(exactextractr)
 import(furrr)
 import(lubridate)
 import(purrr)

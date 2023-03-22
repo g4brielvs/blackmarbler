@@ -4,7 +4,17 @@
 \alias{bm_raster}
 \title{Make Black Marble Raster}
 \usage{
-bm_raster(roi_sf, product_id, date, bearer, variable = NULL)
+bm_raster(
+  roi_sf,
+  product_id,
+  date,
+  bearer,
+  variable = NULL,
+  output_location_type = "file",
+  file_dir = NULL,
+  file_prefix = NULL,
+  file_skip_if_exists = TRUE
+)
 }
 \arguments{
 \item{roi_sf}{Region of interest; sf polygon. Must be in the \href{https://epsg.io/4326}{WGS 84 (epsg:4326)} coordinate reference system.}
@@ -33,6 +43,16 @@ bm_raster(roi_sf, product_id, date, bearer, variable = NULL)
 \item For \code{product_id}s \code{"VNP46A3"} and \code{"VNP46A4"}, uses \code{NearNadir_Composite_Snow_Free}.
 For information on other variable choices, see \href{https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/archives/Document\%20Archive/Science\%20Data\%20Product\%20Documentation/VIIRS_Black_Marble_UG_v1.2_April_2021.pdf}{here}; for \code{VNP46A1}, see Table 3; for \code{VNP46A2} see Table 6; for \code{VNP46A3} and \code{VNP46A4}, see Table 9.
 }}
+
+\item{output_location_type}{Where to produce output; either \code{r_memory} or \code{file}. If \code{r_memory}, functions returns a raster in R. If \code{file}, function exports a \code{.tif} file and returns \code{NULL}.
+
+For \code{output_location_type = file}:}
+
+\item{file_dir}{The directory where data should be exported (default: \code{NULL}, so the working directory will be used)}
+
+\item{file_skip_if_exists}{Whether the function should first check wither the file already exists, and to skip downloading or extracting data if the data for that date if the file already exists (default: \code{TRUE}).}
+
+\item{file_prefix:}{Prefix to add to the file to be saved. The file will be saved as the following: \verb{[file_prefix][product_id]_t[date].tif}}
 }
 \value{
 Raster
