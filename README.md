@@ -34,13 +34,11 @@ The function requires using a **Bearer Token**; to obtain a token, follow the be
 3. Click "See wget Download Command" (bottom near top, in the middle)
 4. After clicking, you will see text that can be used to download data. The "Bearer" token will be a long string in red.
 
-## Quickstart <a name="quickstart">
+## Functions <a name="function">
 
-### bm_raster() Function <a name="function">
-
-The primary function in the package is `bm_raster`, which produces a raster of black marble nighttime lights. It can produce rasters from the following Black Marble products: The function takes the following arguments:
+The package provides two functions. `bm_raster` produces a raster of Black Marble nighttime lights. `bm_extract` produces a dataframe of aggregated nighttime lights to a region of interest (e.g., average nighttime lights within US States). Both functions take the following arguments:
  
-* __roi_sf:__ Region of interest; sf polygon. Must be in the [WGS 84 (epsg:4326)](https://epsg.io/4326) coordinate reference system.
+* __roi_sf:__ Region of interest; sf polygon. Must be in the [WGS 84 (epsg:4326)](https://epsg.io/4326) coordinate reference system. For `bm_extract`, aggregates nighttime lights within each polygon of `roi_sf`.
 
 * __product_id:__ One of the following: 
 
@@ -62,6 +60,43 @@ The primary function in the package is `bm_raster`, which produces a raster of b
   - For `product_id` `"VNP46A2"`, uses `Gap_Filled_DNB_BRDF-Corrected_NTL`. 
   - For `product_id`s `"VNP46A3"` and `"VNP46A4"`, uses `NearNadir_Composite_Snow_Free`. 
 
+* __output_location_type:__ Where output should be stored (default: `r_memory`). Either:
+
+  - `r_memory` where the function will return an output in R
+  - `file` where the function will export the data as a file. For `bm_raster`, a `.tif` file will be saved; for `bm_extract`, a `.Rds` file will be saved. A file is saved for each date. Consequently, if `date = c(2018, 2019, 2020)`, three datasets will be saved: one for each year. Saving a dataset for each date can facilitate re-running the function later and only downloading data for dates where data have not been downloaded.
+
+If `output_location_type = "file"`, the following arguments can be used:
+
+* __file_dir:__ The directory where data should be exported (default: `NULL`, so the working directory will be used)
+* __file_prefix:__ Prefix to add to the file to be saved. The file will be saved as the following: `[file_prefix][product_id]_t[date].[tif/Rds]`
+* __file_skip_if_exists:__ Whether the function should first check wither the file already exists, and to skip downloading or extracting data if the data for that date if the file already exists (default: `TRUE`). If the function is first run with `date = c(2018, 2019, 2020)`, then is later run with `date = c(2018, 2019, 2020, 2021)`, the function will only download/extract data for 2021. Skipping existing files can facilitate re-running the function at a later date to download only more recent data. 
+
+For `bm_extract` only:
+
+* __aggregation_fun:__ A vector of functions to aggregate data (default: `"mean"`). The `exact_extract` function from the `exactextractr` function is used for aggregations; this parameter is passed to `fun` argument in `exactextractr::exact_extract`.
+
+## Quickstart <a name="quickstart">
+
+### Setup <a name="setup">
+
+Before downloading and extract Black Marble data, we first load packages, define the NASA bearer token, and define a region of interest.
+
+```r
+#### Setup
+# Load packages
+library(blackmarbler)
+library(geodata)
+library(sf)
+
+#### Define NASA bearer token
+bearer <- "BEARER-TOKEN-HERE"
+
+### ROI
+# Define region of interest (roi). The roi must be (1) an sf polygon and (2)
+# in the WGS84 (epsg:4326) coordinate reference system. Here, we use the 
+# getData function to load a polygon of Ghana
+roi_sf <- gadm(country = "GHA", level=1, path = tempdir()) %>% st_as_sf()
+```
 
 ### Make raster of nighttime lights <a name="raster">
 
@@ -74,6 +109,8 @@ lights for Ghana.
 library(blackmarbler)
 library(geodata)
 library(sf)
+library(ggplot2)
+library(purrr)
 
 # Define NASA bearer token
 bearer <- "BEARER-TOKEN-HERE"
@@ -132,14 +169,16 @@ r_annual <- bm_raster(roi_sf = roi_sf,
 Using one of the rasters, we can make a map of nighttime lights
 
 ```r
-#### Packages
-# Need ggplot for mapping
-library(ggplot2)
-
+#### Make raster
+r <- bm_raster(roi_sf = roi_sf,
+               product_id = "VNP46A4",
+               date = 2021,
+               bearer = bearer)
+                    
 #### Prep data
-r_2021 <- r_2021 %>% mask(roi_sf) 
+r <- r %>% mask(roi_sf) 
 
-r_df <- rasterToPoints(r_2021, spatial = TRUE) %>% as.data.frame()
+r_df <- rasterToPoints(r, spatial = TRUE) %>% as.data.frame()
 names(r_df) <- c("value", "x", "y")
 
 ## Remove very low values of NTL; can be considered noise 
@@ -170,45 +209,57 @@ p <- ggplot() +
 
 ### Trends over time <a name="trends">
 
-We can use multiple rasters over time to observe changes in nighttime lights over time. The below code leverages the [`exactextractr`](https://github.com/isciences/exactextractr) package to summarize annual nighttime lights to Ghana's first administrative division.
+We can use the `bm_extract` function to observe changes in nighttime lights over time. The `bm_extract` function leverages the [`exactextractr`](https://github.com/isciences/exactextractr) package to aggregate nighttime lights data to polygons. Below we show trends in annual nighttime lights data across Ghana's first administrative divisions.
 
 ```r
-#### Packages
-# Rely on exactextractr to summarize nighttime lights within admin zones and ggplot for the figure.
-library(exactextractr)
-library(ggplot2)
-
-#### ADM 1 polygons for Ghana
-# Load both country and admin 1 level. Country-level is needed as bm_raster() requires
-# a polygon that is just one row.
-gha_1_sf <- gadm(country = "GHA", level=1, path = tempdir()) %>% st_as_sf()
-
 #### Extract annual data
-r <- bm_raster(roi_sf = gha_0_sf,
-               product_id = "VNP46A4",
-               date = 2012:2022,
-               bearer = bearer)
-
-ntl_df <- exact_extract(r_annual, gha_1_sf, 'mean', progress = FALSE)
-ntl_df$NAME_1 <- gha_1_sf$NAME_1
+ntl_df <- bm_extract(roi_sf = roi_sf,
+                     product_id = "VNP46A4",
+                     date = 2012:2022,
+                     bearer = bearer)
 
 #### Trends over time
-ntl_df %>%
-  pivot_longer(cols = -NAME_1) %>%
-  mutate(year = name %>% str_replace_all("mean.t", "") %>% as.numeric()) %>%
-  ggplot() +
-  geom_col(aes(x = year,
-               y = value),
-           fill = "darkorange") +
-  facet_wrap(~NAME_1) +
-  labs(x = NULL,
-       y = "NTL Luminosity",
-       title = "Ghana Admin Level 1: Annual Average Nighttime Lights") +
-  theme_minimal() +
-  theme(strip.text = element_text(face = "bold")) 
+  ntl_df %>%
+    ggplot() +
+    geom_col(aes(x = date,
+                 y = ntl_mean),
+             fill = "darkorange") +
+    facet_wrap(~NAME_1) +
+    labs(x = NULL,
+         y = "NTL Luminosity",
+         title = "Ghana Admin Level 1: Annual Average Nighttime Lights") +
+    theme_minimal() +
+    theme(strip.text = element_text(face = "bold")) 
 ```
 
 <p align="center">
 <img src="man/figures/ntl_trends_gha.png" alt="Nighttime Lights Trends" width="800"/>
 </p>
+
+### Workflow to update data <a name="update-data">
+
+Some users may want to monitor near-real-time changes in nighttime lights. For example, daily Black Marble nighttime lights data is updated regularly, where data is available roughly on a week delay; same use cases may require examining trends in daily nighttime lights data as new data becomes available. Below shows example code that could be regularly run to produce an updated daily dataset of nighttime lights.
+
+The below code produces a dataframe of nighttime lights for each date, where average nighttime lights for Ghana's 1st administrative division is produced. The code will check whether data has already been downloaded/extracted for a specific date, and only download/extract new data.
+
+```r
+# Create directories to store data
+dir.create(file.path(getwd(), "bm_files"))
+dir.create(file.path(getwd(), "bm_files", "daily"))
+
+# Extract daily-level nighttime lights data for Ghana's first administrative divisions. Save a separate dataset for each date in the `"~/Desktop/bm_files/daily"` directory. We extract date from January 1, 2023 to today. Given that daily nighttime lights data is produced on roughly a week delay, the function will only extract data that exists; it will skip extracting data for dates where data has not yet been produced by NASA Black Marble. 
+bm_extract(roi_sf = roi_sf,
+           product_id = "VNP46A2",
+           date = seq.Date(from = ymd("2023-01-01"), to = Sys.Date(), by = 1),
+           bearer = bearer,
+           output_location_type = "file",
+           file_dir = file.path(getwd(), "bm_files", "daily"))
+
+# Append daily-level datasets into one file
+file.path(getwd(), "bm_files", "daily") %>%
+  list.files(pattern = "*.Rds",
+             full.names = T) %>%
+  map_df(readRDS) %>%
+  saveRDS(file.path(getwd(), "bm_files", "ntl_daily.Rds"))
+```
 

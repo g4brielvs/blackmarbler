@@ -10,7 +10,7 @@ if(F){
   bearer <- read_csv("~/Desktop/bearer_bm.csv") %>%
     pull(token)
   
-  roi_sf <- gadm(country = "GHA", level=0, path = tempdir()) %>% st_as_sf()
+  roi_sf <- gadm(country = "GHA", level=1, path = tempdir()) %>% st_as_sf()
   product_id <- "VNP46A3"
   year <- 2018
   month <- 5
@@ -54,30 +54,16 @@ if(F){
          height = 5, width = 6)
   
   # Extract timeseries -----------------------------------------------------------
-  
-  library(exactextractr)
-  library(ggplot2)
-  
-  #### Polygons on Ghana
-  # Load both country and admin 1 level. Country-level is needed as bm_raster() requires
-  # a polygon that is just one row.
-  gha_0_sf <- gadm(country = "GHA", level=0, path = tempdir()) %>% st_as_sf()
-  gha_1_sf <- gadm(country = "GHA", level=1, path = tempdir()) %>% st_as_sf()
-  
-  r <- bm_raster(roi_sf = gha_0_sf,
-                 product_id = "VNP46A4",
-                 date = 2012:2021,
-                 bearer = bearer)
-  
-  ntl_df <- exact_extract(r, gha_1_sf, 'mean', progress = FALSE)
-  ntl_df$NAME_1 <- gha_1_sf$NAME_1
+  ntl_df <- bm_extract(roi_sf = roi_sf,
+                       product_id = "VNP46A4",
+                       date = 2012:2021,
+                       bearer = bearer,
+                       aggregation_fun = c("mean"))
   
   ntl_df %>%
-    pivot_longer(cols = -NAME_1) %>%
-    mutate(year = name %>% str_replace_all("mean.t", "") %>% as.numeric()) %>%
     ggplot() +
-    geom_col(aes(x = year,
-                 y = value),
+    geom_col(aes(x = date,
+                 y = ntl_mean),
              fill = "darkorange") +
     facet_wrap(~NAME_1) +
     labs(x = NULL,
@@ -89,5 +75,26 @@ if(F){
   ggsave(p,
          filename = file.path("~/Documents/Github/blackmarbler/man/figures/ntl_trends_gha.png"),
          height = 5, width = 6)
+  
+  # Test daily extraction updating -----------------------------------------------------------
+  setwd("~/Desktop")
+  
+  # Create directories to store data
+  dir.create(file.path(getwd(), "bm_files"))
+  dir.create(file.path(getwd(), "bm_files", "daily"))
+  
+  bm_extract(roi_sf = roi_sf,
+             product_id = "VNP46A2",
+             date = seq.Date(from = ymd("2023-01-01"), to = ymd("2023-01-02"), by = 1),
+             bearer = bearer,
+             output_location_type = "file",
+             file_dir = file.path(getwd(), "bm_files", "daily"))
+  
+  # Append daily-level datasets into one file
+  file.path(getwd(), "bm_files", "daily") %>%
+    list.files(pattern = "*.Rds",
+               full.names = T) %>%
+    map_df(readRDS) %>%
+    saveRDS(file.path(getwd(), "bm_files", "ntl_daily.Rds"))
   
 }

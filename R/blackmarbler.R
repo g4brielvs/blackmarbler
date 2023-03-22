@@ -305,72 +305,6 @@ download_raster <- function(file_name,
   return(r)
 }
 
-#' Make Black Marble Raster
-#' 
-#' Make a raster of nighttime lights from [NASA Black Marble data](https://blackmarble.gsfc.nasa.gov/)
-
-#' @param roi_sf Region of interest; sf polygon. Must be in the [WGS 84 (epsg:4326)](https://epsg.io/4326) coordinate reference system.
-#' @param product_id One of the following: 
-#' * `"VNP46A1"`: Daily (raw)
-#' * `"VNP46A2"`: Daily (corrected)
-#' * `"VNP46A3"`: Monthly
-#' * `"VNP46A4"`: Annual
-#' @param date Date of raster data. Entering one date will produce a raster. Entering multiple dates will produce a raster stack. 
-#' * For `product_id`s `"VNP46A1"` and `"VNP46A2"`, a date (eg, `"2021-10-03"`). 
-#' * For `product_id` `"VNP46A3"`, a date or year-month (e.g., `"2021-10-01"`, where the day will be ignored, or `"2021-10"`).
-#' * For `product_id` `"VNP46A4"`, year or date  (e.g., `"2021-10-01"`, where the month and day will be ignored, or `2021`). 
-#' @param bearer NASA bearer token. For instructions on how to create a token, see [here](https://github.com/ramarty/blackmarbler#bearer-token-).
-#' @param variable Variable to used to create raster (default: `NULL`). If `NULL`, uses the following default variables: 
-#' * For `product_id` `:VNP46A1"`, uses `DNB_At_Sensor_Radiance_500m`. 
-#' * For `product_id` `"VNP46A2"`, uses `Gap_Filled_DNB_BRDF-Corrected_NTL`. 
-#' * For `product_id`s `"VNP46A3"` and `"VNP46A4"`, uses `NearNadir_Composite_Snow_Free`. 
-#' For information on other variable choices, see [here](https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/archives/Document%20Archive/Science%20Data%20Product%20Documentation/VIIRS_Black_Marble_UG_v1.2_April_2021.pdf); for `VNP46A1`, see Table 3; for `VNP46A2` see Table 6; for `VNP46A3` and `VNP46A4`, see Table 9.
-#'
-#' @return Raster
-#'
-#' @examples
-#' \dontrun{
-#' # Define bearer token
-#' bearer <- "BEARER-TOKEN-HERE"
-#' 
-#' # sf polygon of Ghana
-#' library(geodata)
-#' roi_sf <- gadm(country = "GHA", level=0, path = tempdir()) %>% st_as_sf()
-#' 
-#' # Daily data: raster for October 3, 2021
-#' ken_20210205_r <- bm_raster(roi_sf = roi_sf,
-#'                             product_id = "VNP46A2",
-#'                             date = "2021-10-03",
-#'                             bearer = bearer)
-#' 
-#' # Monthly data: raster for March 2021
-#' ken_202103_r <- bm_raster(roi_sf = roi_sf,
-#'                           product_id = "VNP46A3",
-#'                           date = "2021-03-01",
-#'                           bearer = bearer)
-#' 
-#' # Annual data: raster for 2021
-#' ken_2021_r <- bm_raster(roi_sf = roi_sf,
-#'                         product_id = "VNP46A4",
-#'                         date = 2021,
-#'                         bearer = bearer)
-#'}
-#'
-#' @export
-#' 
-#' @import purrr
-#' @import furrr
-#' @import stringr
-#' @import rhdf5
-#' @import dplyr
-#' @import sf
-#' @import lubridate
-#' @import readr
-#' @import exactextractr
-#' @rawNamespace import(raster, except = c(union, select, intersect, origin, tail, head))
-
-# @rawNamespace import(utils, except = c(stack, unstack))
-
 define_variable <- function(variable, product_id){
   
   if(is.null(variable)){
@@ -426,10 +360,7 @@ bm_extract <- function(roi_sf,
         #### If save to file
         if(output_location_type == "file"){
           
-          out_name <- paste0(file_prefix, product_id, "_", date_name_i, 
-                             ifelse(output_type == "raster", 
-                                    ".tif",
-                                    ".Rds"))
+          out_name <- paste0(file_prefix, product_id, "_", date_name_i, ".Rds")
           out_path <- file.path(file_dir, out_name)
           
           make_raster <- TRUE
@@ -454,7 +385,7 @@ bm_extract <- function(roi_sf,
               names(r_agg) <- paste0("ntl_", names(r_agg))
               r_agg <- bind_cols(r_agg, roi_df)
             } else{
-              roi_df$ntl <- r_out
+              roi_df[[paste0("ntl_", aggregation_fun)]] <- r_agg
               r_agg <- roi_df
             }
             r_agg$date <- date_i
@@ -463,7 +394,7 @@ bm_extract <- function(roi_sf,
             saveRDS(r_agg, out_path)
             
           } else{
-            cat(paste0('"', out_path, '" already exists; skipping.'))
+            cat(paste0('"', out_path, '" already exists; skipping.\n'))
           }
           
           r_out <- NULL # Saving as file, so output from function should be NULL
@@ -484,7 +415,8 @@ bm_extract <- function(roi_sf,
             names(r_out) <- paste0("ntl_", names(r_out))
             r_out <- bind_cols(r_out, roi_df)
           } else{
-            roi_df$ntl <- r_out
+            
+            roi_df[[paste0("ntl_", aggregation_fun)]] <- r_out
             r_out <- roi_df
           }
           r_out$date <- date_i
@@ -510,6 +442,77 @@ bm_extract <- function(roi_sf,
   return(r)
 }
 
+#' Make Black Marble Raster
+#' 
+#' Make a raster of nighttime lights from [NASA Black Marble data](https://blackmarble.gsfc.nasa.gov/)
+
+#' @param roi_sf Region of interest; sf polygon. Must be in the [WGS 84 (epsg:4326)](https://epsg.io/4326) coordinate reference system.
+#' @param product_id One of the following: 
+#' * `"VNP46A1"`: Daily (raw)
+#' * `"VNP46A2"`: Daily (corrected)
+#' * `"VNP46A3"`: Monthly
+#' * `"VNP46A4"`: Annual
+#' @param date Date of raster data. Entering one date will produce a raster. Entering multiple dates will produce a raster stack. 
+#' * For `product_id`s `"VNP46A1"` and `"VNP46A2"`, a date (eg, `"2021-10-03"`). 
+#' * For `product_id` `"VNP46A3"`, a date or year-month (e.g., `"2021-10-01"`, where the day will be ignored, or `"2021-10"`).
+#' * For `product_id` `"VNP46A4"`, year or date  (e.g., `"2021-10-01"`, where the month and day will be ignored, or `2021`). 
+#' @param bearer NASA bearer token. For instructions on how to create a token, see [here](https://github.com/ramarty/blackmarbler#bearer-token-).
+#' @param variable Variable to used to create raster (default: `NULL`). If `NULL`, uses the following default variables: 
+#' * For `product_id` `:VNP46A1"`, uses `DNB_At_Sensor_Radiance_500m`. 
+#' * For `product_id` `"VNP46A2"`, uses `Gap_Filled_DNB_BRDF-Corrected_NTL`. 
+#' * For `product_id`s `"VNP46A3"` and `"VNP46A4"`, uses `NearNadir_Composite_Snow_Free`. 
+#' For information on other variable choices, see [here](https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/archives/Document%20Archive/Science%20Data%20Product%20Documentation/VIIRS_Black_Marble_UG_v1.2_April_2021.pdf); for `VNP46A1`, see Table 3; for `VNP46A2` see Table 6; for `VNP46A3` and `VNP46A4`, see Table 9.
+#' @param output_location_type Where to produce output; either `r_memory` or `file`. If `r_memory`, functions returns a raster in R. If `file`, function exports a `.tif` file and returns `NULL`.
+#' 
+#' For `output_location_type = file`:
+#' @param file_dir The directory where data should be exported (default: `NULL`, so the working directory will be used)
+#' @param file_prefix: Prefix to add to the file to be saved. The file will be saved as the following: `[file_prefix][product_id]_t[date].tif`
+#' @param file_skip_if_exists Whether the function should first check wither the file already exists, and to skip downloading or extracting data if the data for that date if the file already exists (default: `TRUE`).
+#'
+#' @return Raster
+#'
+#' @examples
+#' \dontrun{
+#' # Define bearer token
+#' bearer <- "BEARER-TOKEN-HERE"
+#' 
+#' # sf polygon of Ghana
+#' library(geodata)
+#' roi_sf <- gadm(country = "GHA", level=0, path = tempdir()) %>% st_as_sf()
+#' 
+#' # Daily data: raster for October 3, 2021
+#' ken_20210205_r <- bm_raster(roi_sf = roi_sf,
+#'                             product_id = "VNP46A2",
+#'                             date = "2021-10-03",
+#'                             bearer = bearer)
+#' 
+#' # Monthly data: raster for March 2021
+#' ken_202103_r <- bm_raster(roi_sf = roi_sf,
+#'                           product_id = "VNP46A3",
+#'                           date = "2021-03-01",
+#'                           bearer = bearer)
+#' 
+#' # Annual data: raster for 2021
+#' ken_2021_r <- bm_raster(roi_sf = roi_sf,
+#'                         product_id = "VNP46A4",
+#'                         date = 2021,
+#'                         bearer = bearer)
+#'}
+#'
+#' @export
+#' 
+#' @import purrr
+#' @import furrr
+#' @import stringr
+#' @import rhdf5
+#' @import dplyr
+#' @import sf
+#' @import lubridate
+#' @import readr
+#' @import exactextractr
+#' @rawNamespace import(raster, except = c(union, select, intersect, origin, tail, head))
+
+# @rawNamespace import(utils, except = c(stack, unstack))
 bm_raster <- function(roi_sf,
                       product_id,
                       date,
@@ -534,10 +537,7 @@ bm_raster <- function(roi_sf,
         
         #### If save as tif format
         if(output_location_type == "file"){
-          out_name <- paste0(file_prefix, product_id, "_", date_name_i, 
-                             ifelse(output_type == "raster", 
-                                    ".tif",
-                                    ".Rds"))
+          out_name <- paste0(file_prefix, product_id, "_", date_name_i, ".tif")
           out_path <- file.path(file_dir, out_name)
           
           make_raster <- TRUE
@@ -555,7 +555,7 @@ bm_raster <- function(roi_sf,
             writeRaster(r, out_path)
             
           } else{
-            cat(paste0('"', out_path, '" already exists; skipping.'))
+            cat(paste0('"', out_path, '" already exists; skipping.\n'))
           }
           
           r_out <- NULL # Saving as tif file, so output from function should be NULL
