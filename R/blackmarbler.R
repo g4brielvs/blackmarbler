@@ -568,6 +568,7 @@ bm_extract <- function(roi_sf,
 #' @import lubridate
 #' @import readr
 #' @import exactextractr
+#' @import purrr
 #' @rawNamespace import(raster, except = c(union, select, intersect, origin, tail, head))
 
 # @rawNamespace import(utils, except = c(stack, unstack))
