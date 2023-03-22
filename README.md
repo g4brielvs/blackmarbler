@@ -249,7 +249,11 @@ The below code produces a dataframe of nighttime lights for each date, where ave
 dir.create(file.path(getwd(), "bm_files"))
 dir.create(file.path(getwd(), "bm_files", "daily"))
 
-# Extract daily-level nighttime lights data for Ghana's first administrative divisions. Save a separate dataset for each date in the `"~/Desktop/bm_files/daily"` directory. We extract date from January 1, 2023 to today. Given that daily nighttime lights data is produced on roughly a week delay, the function will only extract data that exists; it will skip extracting data for dates where data has not yet been produced by NASA Black Marble. 
+# Extract daily-level nighttime lights data for Ghana's first administrative divisions. 
+Save a separate dataset for each date in the `"~/Desktop/bm_files/daily"` directory. 
+The code extracts data from January 1, 2023 to today. Given that daily nighttime lights 
+data is produced on roughly a week delay, the function will only extract data that exists; 
+it will skip extracting data for dates where data has not yet been produced by NASA Black Marble. 
 bm_extract(roi_sf = roi_sf,
            product_id = "VNP46A2",
            date = seq.Date(from = ymd("2023-01-01"), to = Sys.Date(), by = 1),
