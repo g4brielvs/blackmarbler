@@ -526,7 +526,7 @@ bm_raster_i <- function(roi_sf,
                         variable){
   
   # Black marble grid ----------------------------------------------------------
-  bm_tiles_sf <- read_sf("https://raw.githubusercontent.com/ramarty/download_blackmarble/main/data/blackmarbletiles.geojson")
+  bm_tiles_sf <- read_sf("https://raw.githubusercontent.com/ramarty/blackmarbler/main/data/blackmarbletiles.geojson")
   
   # Prep dates -----------------------------------------------------------------
   ## For monthly, allow both yyyy-mm and yyyy-mm-dd (where -dd is ignored)
