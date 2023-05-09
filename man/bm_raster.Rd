@@ -10,7 +10,7 @@ bm_raster(
   date,
   bearer,
   variable = NULL,
-  output_location_type = "file",
+  output_location_type = "r_memory",
   file_dir = NULL,
   file_prefix = NULL,
   file_skip_if_exists = TRUE

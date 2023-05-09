@@ -11,6 +11,7 @@ if(F){
   library(dplyr)
   library(sf)
   library(lubridate)
+  library(exactextractr)
 }
 
 #' Black Marble Tile Grid Shapefile
@@ -577,7 +578,7 @@ bm_raster <- function(roi_sf,
                       date,
                       bearer,
                       variable = NULL,
-                      output_location_type = "file", # r_memory, file
+                      output_location_type = "r_memory", # r_memory, file
                       file_dir = NULL,
                       file_prefix = NULL,
                       file_skip_if_exists = TRUE){
@@ -709,20 +710,24 @@ bm_raster_i <- function(roi_sf,
   bm_tiles_sf <- bm_tiles_sf[!(bm_tiles_sf$TileID %>% str_detect("v00")),]
   
   ## If roi is more than one row, combine
-  if(nrow(roi_sf) > 1){
-    roi_1row_sf <- roi_sf %>%
-      st_union() %>%
-      st_as_sf()
-  } else{
-    roi_1row_sf <- roi_sf 
-  }
+  # if(nrow(roi_sf) > 1){
+  #   roi_1row_sf <- roi_sf %>%
+  #     st_union() %>%
+  #     st_as_sf() %>%
+  #     st_make_valid()
+  #   
+  # } else{
+  #   roi_1row_sf <- roi_sf 
+  # }
   
-  roi_1row_sf <<- roi_1row_sf
-  bm_tiles_sf <<- bm_tiles_sf
+  # roi_1row_sf <<- roi_1row_sf
+  # bm_tiles_sf <<- bm_tiles_sf
   
+  #inter <- st_intersects(bm_tiles_sf, roi_1row_sf, sparse = F) %>% as.vector()
+  inter <- st_intersects(bm_tiles_sf, roi_sf, sparse = F) %>% 
+    apply(1, sum)
   
-  inter <- st_intersects(bm_tiles_sf, roi_1row_sf, sparse = F) %>% as.vector()
-  grid_use_sf <- bm_tiles_sf[inter,]
+  grid_use_sf <- bm_tiles_sf[inter>0,]
   
   # Make Raster ----------------------------------------------------------------
   tile_ids_rx <- grid_use_sf$TileID %>% paste(collapse = "|")
