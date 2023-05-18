@@ -106,23 +106,6 @@ The below example shows making daily, monthly, and annual rasters of nighttime
 lights for Ghana.
 
 ```r
-#### Setup
-# Load packages
-library(blackmarbler)
-library(geodata)
-library(sf)
-library(ggplot2)
-library(purrr)
-
-# Define NASA bearer token
-bearer <- "BEARER-TOKEN-HERE"
-
-# Define region of interest (roi). The roi must be (1) an sf polygon and (2)
-# in the WGS84 (epsg:4326) coordinate reference system. Here, we use the 
-# getData function to load a polygon of Ghana
-roi_sf <- gadm(country = "GHA", level=0, path = tempdir()) %>% st_as_sf()
-
-#### Make Rasters
 ### Daily data: raster for February 5, 2021
 r_20210205 <- bm_raster(roi_sf = roi_sf,
                         product_id = "VNP46A2",
