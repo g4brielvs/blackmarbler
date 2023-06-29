@@ -296,22 +296,22 @@ download_raster <- function(file_name,
   day        <- file_name %>% substring(14,16)
   product_id <- file_name %>% substring(1,7)
 
-  # wget_command <- paste0("wget -e robots=off -m -np .html,.tmp -nH --cut-dirs=3 ",
-  #                        "'https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/",product_id,"/", year, "/", day, "/", file_name,"'",
-  #                        " --header 'Authorization: Bearer ",
-  #                        bearer,
-  #                        "' -P ",
-  #                        temp_dir,
-  #                        "/") #                          " --no-if-modified-since"
-
-  wget_command <- paste0('wget -e robots=off -m -np .html,.tmp -nH --cut-dirs=3 ',
-                         '"https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/',product_id,'/', year, '/', day, '/', file_name,'"',
+  wget_command <- paste0("wget -e robots=off -m -np .html,.tmp -nH --cut-dirs=3 ",
+                         "'https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/",product_id,"/", year, "/", day, "/", file_name,"'",
                          " --header 'Authorization: Bearer ",
                          bearer,
-                         '" -P ',
+                         "' -P ",
                          temp_dir,
-                         '/') #                          " --no-if-modified-since"
-  print(wget_command)
+                         "/") #                          " --no-if-modified-since"
+
+  # wget_command <- paste0('wget -e robots=off -m -np .html,.tmp -nH --cut-dirs=3 ',
+  #                        '"https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/',product_id,'/', year, '/', day, '/', file_name,'"',
+  #                        " --header 'Authorization: Bearer ",
+  #                        bearer,
+  #                        '" -P ',
+  #                        temp_dir,
+  #                        '/') #                          " --no-if-modified-since"
+  cat(wget_command)
 
   system(wget_command)
 
