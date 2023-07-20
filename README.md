@@ -75,7 +75,7 @@ If `output_location_type = "file"`, the following arguments can be used:
 
 For `bm_extract` only:
 
-* __aggregation_fun:__ A vector of functions to aggregate data (default: `"mean"`). The `exact_extract` function from the `exactextractr` function is used for aggregations; this parameter is passed to `fun` argument in `exactextractr::exact_extract`.
+* __aggregation_fun:__ A vector of functions to aggregate data (default: `"mean"`). The `exact_extract` function from the `exactextractr` package is used for aggregations; this parameter is passed to `fun` argument in `exactextractr::exact_extract`.
 
 ## Quickstart <a name="quickstart">
 

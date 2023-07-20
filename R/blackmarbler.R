@@ -290,19 +290,12 @@ create_dataset_name_df <- function(product_id,
 download_raster <- function(file_name,
                             temp_dir,
                             variable,
-                            bearer){
+                            bearer,
+                            quiet){
 
   year       <- file_name %>% substring(10,13)
   day        <- file_name %>% substring(14,16)
   product_id <- file_name %>% substring(1,7)
-
-  # wget_command <- paste0("wget -e robots=off -m -np .html,.tmp -nH --cut-dirs=3 ",
-  #                        "'https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/",product_id,"/", year, "/", day, "/", file_name,"'",
-  #                        " --header 'Authorization: Bearer ",
-  #                        bearer,
-  #                        "' -P ",
-  #                        temp_dir,
-  #                        "/") #                          " --no-if-modified-since"
 
   wget_command <- paste0('wget -e robots=off -m -np .html,.tmp -nH --cut-dirs=3 ',
                          '"https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5000/',product_id,'/', year, '/', day, '/', file_name,'"',
@@ -311,7 +304,8 @@ download_raster <- function(file_name,
                          '" -P ',
                          temp_dir)
 
-  system(wget_command)
+  if(quiet == FALSE) print(paste0("Downloading: ", file_name))
+  tmp <- system(wget_command, intern = T, ignore.stdout = TRUE, ignore.stderr = TRUE)
 
   r <- file_to_raster(file.path(temp_dir, product_id, year, day, file_name), variable)
 
@@ -367,12 +361,14 @@ define_date_name <- function(date_i, product_id){
 #' * For `product_id` `"VNP46A2"`, uses `Gap_Filled_DNB_BRDF-Corrected_NTL`.
 #' * For `product_id`s `"VNP46A3"` and `"VNP46A4"`, uses `NearNadir_Composite_Snow_Free`.
 #' For information on other variable choices, see [here](https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/archives/Document%20Archive/Science%20Data%20Product%20Documentation/VIIRS_Black_Marble_UG_v1.2_April_2021.pdf); for `VNP46A1`, see Table 3; for `VNP46A2` see Table 6; for `VNP46A3` and `VNP46A4`, see Table 9.
+#' @param check_all_tiles_exist Check whether all Black Marble nighttime light tiles exist for the region of interest. Sometimes not all tiles are available, so the full region of interest may not be covered. If `TRUE`, skips cases where not all tiles are available. (Default: `TRUE`).
 #' @param output_location_type Where to produce output; either `r_memory` or `file`. If `r_memory`, functions returns a raster in R. If `file`, function exports a `.tif` file and returns `NULL`.
 #'
 #' For `output_location_type = file`:
 #' @param file_dir The directory where data should be exported (default: `NULL`, so the working directory will be used)
 #' @param file_prefix: Prefix to add to the file to be saved. The file will be saved as the following: `[file_prefix][product_id]_t[date].tif`
 #' @param file_skip_if_exists Whether the function should first check wither the file already exists, and to skip downloading or extracting data if the data for that date if the file already exists (default: `TRUE`).
+#' @param quiet Suppress output that show downloading progress and other messages. (Default: `FALSE`).
 #'
 #' @return Raster
 #'
@@ -410,11 +406,13 @@ bm_extract <- function(roi_sf,
                        date,
                        bearer,
                        variable = NULL,
+                       check_all_tiles_exist = TRUE,
                        output_location_type = "r_memory", # r_memory, file
                        aggregation_fun = c("mean"),
                        file_dir = NULL,
                        file_prefix = NULL,
-                       file_skip_if_exists = TRUE){
+                       file_skip_if_exists = TRUE,
+                       quiet = FALSE){
 
   # NTL Variable ---------------------------------------------------------------
   variable <- define_variable(variable, product_id)
@@ -444,7 +442,9 @@ bm_extract <- function(roi_sf,
                              product_id = product_id,
                              date = date_i,
                              bearer = bearer,
-                             variable = variable)
+                             variable = variable,
+                             check_all_tiles_exist = check_all_tiles_exist,
+                             quiet = quiet)
             names(r) <- date_name_i
 
             #### Extract
@@ -475,7 +475,9 @@ bm_extract <- function(roi_sf,
                                product_id = product_id,
                                date = date_i,
                                bearer = bearer,
-                               variable = variable)
+                               variable = variable,
+                               check_all_tiles_exist = check_all_tiles_exist,
+                               quiet = quiet)
           names(r_out) <- date_name_i
 
           r_out <- exact_extract(x = r_out, y = roi_sf, fun = aggregation_fun)
@@ -533,12 +535,14 @@ bm_extract <- function(roi_sf,
 #' * For `product_id` `"VNP46A2"`, uses `Gap_Filled_DNB_BRDF-Corrected_NTL`.
 #' * For `product_id`s `"VNP46A3"` and `"VNP46A4"`, uses `NearNadir_Composite_Snow_Free`.
 #' For information on other variable choices, see [here](https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/archives/Document%20Archive/Science%20Data%20Product%20Documentation/VIIRS_Black_Marble_UG_v1.2_April_2021.pdf); for `VNP46A1`, see Table 3; for `VNP46A2` see Table 6; for `VNP46A3` and `VNP46A4`, see Table 9.
+#' @param check_all_tiles_exist Check whether all Black Marble nighttime light tiles exist for the region of interest. Sometimes not all tiles are available, so the full region of interest may not be covered. If `TRUE`, skips cases where not all tiles are available. (Default: `TRUE`).
 #' @param output_location_type Where to produce output; either `r_memory` or `file`. If `r_memory`, functions returns a raster in R. If `file`, function exports a `.tif` file and returns `NULL`.
 #'
 #' For `output_location_type = file`:
 #' @param file_dir The directory where data should be exported (default: `NULL`, so the working directory will be used)
 #' @param file_prefix: Prefix to add to the file to be saved. The file will be saved as the following: `[file_prefix][product_id]_t[date].tif`
 #' @param file_skip_if_exists Whether the function should first check wither the file already exists, and to skip downloading or extracting data if the data for that date if the file already exists (default: `TRUE`).
+#' @param quiet Suppress output that show downloading progress and other messages. (Default: `FALSE`).
 #'
 #' @return Raster
 #'
@@ -590,10 +594,12 @@ bm_raster <- function(roi_sf,
                       date,
                       bearer,
                       variable = NULL,
+                      check_all_tiles_exist = TRUE,
                       output_location_type = "r_memory", # r_memory, file
                       file_dir = NULL,
                       file_prefix = NULL,
-                      file_skip_if_exists = TRUE){
+                      file_skip_if_exists = TRUE,
+                      quiet = FALSE){
 
   # NTL Variable ---------------------------------------------------------------
   variable <- define_variable(variable, product_id)
@@ -621,7 +627,9 @@ bm_raster <- function(roi_sf,
                              product_id = product_id,
                              date = date_i,
                              bearer = bearer,
-                             variable = variable)
+                             variable = variable,
+                             check_all_tiles_exist = check_all_tiles_exist,
+                             quiet = quiet)
             names(r) <- date_name_i
 
             writeRaster(r, out_path)
@@ -637,7 +645,9 @@ bm_raster <- function(roi_sf,
                                product_id = product_id,
                                date = date_i,
                                bearer = bearer,
-                               variable = variable)
+                               variable = variable,
+                               check_all_tiles_exist = check_all_tiles_exist,
+                               quiet = quiet)
           names(r_out) <- date_name_i
 
         }
@@ -671,7 +681,9 @@ bm_raster_i <- function(roi_sf,
                         product_id,
                         date,
                         bearer,
-                        variable){
+                        variable,
+                        check_all_tiles_exist,
+                        quiet){
 
   # Checks ---------------------------------------------------------------------
   if(!("sf" %in% class(roi_sf))){
@@ -719,20 +731,6 @@ bm_raster_i <- function(roi_sf,
   bm_tiles_sf <- bm_tiles_sf[!(bm_tiles_sf$TileID %>% str_detect("h00")),]
   bm_tiles_sf <- bm_tiles_sf[!(bm_tiles_sf$TileID %>% str_detect("v00")),]
 
-  ## If roi is more than one row, combine
-  # if(nrow(roi_sf) > 1){
-  #   roi_1row_sf <- roi_sf %>%
-  #     st_union() %>%
-  #     st_as_sf() %>%
-  #     st_make_valid()
-  #
-  # } else{
-  #   roi_1row_sf <- roi_sf
-  # }
-
-  # roi_1row_sf <<- roi_1row_sf
-  # bm_tiles_sf <<- bm_tiles_sf
-
   #inter <- st_intersects(bm_tiles_sf, roi_1row_sf, sparse = F) %>% as.vector()
   inter <- st_intersects(bm_tiles_sf, roi_sf, sparse = F) %>%
     apply(1, sum)
@@ -743,12 +741,17 @@ bm_raster_i <- function(roi_sf,
   tile_ids_rx <- grid_use_sf$TileID %>% paste(collapse = "|")
   bm_files_df <- bm_files_df[bm_files_df$name %>% str_detect(tile_ids_rx),]
 
+  if( (nrow(bm_files_df) < nrow(grid_use_sf)) & check_all_tiles_exist){
+    warning("Not all satellite imagery tiles for this location exist, so skipping. To ignore this error and process anyway, set check_all_tiles_exist = FALSE")
+    stop("Not all satellite imagery tiles for this location exist, so skipping. To ignore this error and process anyway, set check_all_tiles_exist = FALSE")
+  }
+
   temp_dir <- tempdir()
 
   unlink(file.path(temp_dir, product_id), recursive = T)
 
   r_list <- lapply(bm_files_df$name, function(name_i){
-    download_raster(name_i, temp_dir, variable, bearer)
+    download_raster(name_i, temp_dir, variable, bearer, quiet)
   })
 
   if(length(r_list) == 1){
