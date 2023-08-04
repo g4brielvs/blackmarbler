@@ -1,4 +1,6 @@
 
+remove.packages("blackmarbler")
+devtools::install_github("ramarty/blackmarbler")
 library(purrr)
 library(furrr)
 library(stringr)
@@ -17,6 +19,11 @@ bearer <- read.csv("~/Desktop/bearer_bm.csv") %>%
 gha_1_sf <- gadm(country = "GHA", level=1, path = tempdir()) %>% st_as_sf()
 
 r_ntl <- bm_raster(roi_sf = gha_1_sf,
+                   product_id = "VNP46A3",
+                   date = "2021-01-01",
+                   bearer = bearer)
+
+ntl_df <- bm_extract(roi_sf = gha_1_sf,
                    product_id = "VNP46A3",
                    date = "2021-01-01",
                    bearer = bearer)

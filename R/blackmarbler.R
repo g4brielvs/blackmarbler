@@ -523,6 +523,7 @@ bm_extract <- function(roi_sf,
   r <- r_list %>%
     bind_rows()
 
+  unlink(temp_dir, recursive = T)
   return(r)
 }
 
@@ -695,6 +696,8 @@ bm_raster <- function(roi_sf,
   } else{
     r <- NULL
   }
+
+  unlink(temp_dir, recursive = T)
 
   return(r)
 }
