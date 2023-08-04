@@ -414,6 +414,15 @@ bm_extract <- function(roi_sf,
                        file_skip_if_exists = TRUE,
                        quiet = FALSE){
 
+  # Define Tempdir -------------------------------------------------------------
+  temp_main_dir = tempdir()
+
+  current_time_millis = as.character(as.numeric(Sys.time())*1000) %>%
+    str_replace_all("[:punct:]", "")
+  temp_dir = file.path(temp_main_dir, paste0("bm_raster_temp_", current_time_millis))
+
+  dir.create(temp_dir, showWarnings = F)
+
   # NTL Variable ---------------------------------------------------------------
   variable <- define_variable(variable, product_id)
 
@@ -444,7 +453,8 @@ bm_extract <- function(roi_sf,
                              bearer = bearer,
                              variable = variable,
                              check_all_tiles_exist = check_all_tiles_exist,
-                             quiet = quiet)
+                             quiet = quiet,
+                             temp_dir = temp_dir)
             names(r) <- date_name_i
 
             #### Extract
@@ -477,7 +487,8 @@ bm_extract <- function(roi_sf,
                                bearer = bearer,
                                variable = variable,
                                check_all_tiles_exist = check_all_tiles_exist,
-                               quiet = quiet)
+                               quiet = quiet,
+                               temp_dir = temp_dir)
           names(r_out) <- date_name_i
 
           r_out <- exact_extract(x = r_out, y = roi_sf, fun = aggregation_fun)
@@ -601,6 +612,15 @@ bm_raster <- function(roi_sf,
                       file_skip_if_exists = TRUE,
                       quiet = FALSE){
 
+  # Define Tempdir -------------------------------------------------------------
+  temp_main_dir = tempdir()
+
+  current_time_millis = as.character(as.numeric(Sys.time())*1000) %>%
+    str_replace_all("[:punct:]", "")
+  temp_dir = file.path(temp_main_dir, paste0("bm_raster_temp_", current_time_millis))
+
+  dir.create(temp_dir, showWarnings = F)
+
   # NTL Variable ---------------------------------------------------------------
   variable <- define_variable(variable, product_id)
 
@@ -629,7 +649,8 @@ bm_raster <- function(roi_sf,
                              bearer = bearer,
                              variable = variable,
                              check_all_tiles_exist = check_all_tiles_exist,
-                             quiet = quiet)
+                             quiet = quiet,
+                             temp_dir = temp_dir)
             names(r) <- date_name_i
 
             writeRaster(r, out_path)
@@ -647,7 +668,8 @@ bm_raster <- function(roi_sf,
                                bearer = bearer,
                                variable = variable,
                                check_all_tiles_exist = check_all_tiles_exist,
-                               quiet = quiet)
+                               quiet = quiet,
+                               temp_dir = temp_dir)
           names(r_out) <- date_name_i
 
         }
@@ -683,7 +705,8 @@ bm_raster_i <- function(roi_sf,
                         bearer,
                         variable,
                         check_all_tiles_exist,
-                        quiet){
+                        quiet,
+                        temp_dir){
 
   # Checks ---------------------------------------------------------------------
   if(!("sf" %in% class(roi_sf))){
@@ -746,8 +769,6 @@ bm_raster_i <- function(roi_sf,
     stop("Not all satellite imagery tiles for this location exist, so skipping. To ignore this error and process anyway, set check_all_tiles_exist = FALSE")
   }
 
-  temp_dir <- tempdir()
-
   unlink(file.path(temp_dir, product_id), recursive = T)
 
   r_list <- lapply(bm_files_df$name, function(name_i){
@@ -757,10 +778,6 @@ bm_raster_i <- function(roi_sf,
   if(length(r_list) == 1){
     r <- r_list[[1]]
   } else{
-
-    #r <- r_big_mosaic(r_list)
-
-    #r_listr <<- r_list
 
     ## Mosaic rasters together
     names(r_list)    <- NULL
