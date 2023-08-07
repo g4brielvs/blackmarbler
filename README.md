@@ -7,12 +7,12 @@ Create Georeferenced Rasters of Nighttime Lights from [NASA Black Marble data](h
 * [Bearer token](#token)
 * [Functions](#function)
 * [Quick start](#quickstart)
-* [Setup](#setup)
-* [Make raster](#raster)
-* [Make raster stack across multiple time periods](#stack)
-* [Make map](#map)
-* [Make figure of trends in nighttime lights](#trends)
-* [Workflow to update data](#update-data)
+  * [Setup](#setup)
+  * [Make raster](#raster)
+  * [Make raster stack across multiple time periods](#stack)
+  * [Make map](#map)
+  * [Make figure of trends in nighttime lights](#trends)
+  * [Workflow to update data](#update-data)
 
 ## Overview <a name="overview"></a>
 
