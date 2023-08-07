@@ -1,6 +1,6 @@
 
-remove.packages("blackmarbler")
-devtools::install_github("ramarty/blackmarbler")
+#remove.packages("blackmarbler")
+#devtools::install_github("ramarty/blackmarbler")
 library(purrr)
 library(furrr)
 library(stringr)
@@ -11,7 +11,7 @@ library(sf)
 library(lubridate)
 library(geodata)
 library(exactextractr)
-library(blackmarbler)
+#library(blackmarbler)
 
 bearer <- read.csv("~/Desktop/bearer_bm.csv") %>%
   pull(token)
@@ -19,26 +19,31 @@ bearer <- read.csv("~/Desktop/bearer_bm.csv") %>%
 gha_1_sf <- gadm(country = "GHA", level=1, path = tempdir()) %>% st_as_sf()
 
 r_ntl <- bm_raster(roi_sf = gha_1_sf,
-                   product_id = "VNP46A3",
-                   date = "2021-01-01",
-                   bearer = bearer)
-
-ntl_df <- bm_extract(roi_sf = gha_1_sf,
-                   product_id = "VNP46A3",
+                   product_id = "VNP46A2",
                    date = "2021-01-01",
                    bearer = bearer)
 
 r_ntl <- bm_raster(roi_sf = gha_1_sf,
-               product_id = "VNP46A3",
-               date = ymd("2020-01-01"),
-               bearer = bearer,
-               variable = "NearNadir_Composite_Snow_Free")
+                   product_id = "VNP46A4",
+                   date = 2021,
+                   bearer = bearer)
 
-r_ntl2 <- bm_raster(roi_sf = gha_1_sf,
+ntl_df <- bm_extract(roi_sf = gha_1_sf,
+                     product_id = "VNP46A3",
+                     date = "2021-01-01",
+                     bearer = bearer)
+
+r_ntl <- bm_raster(roi_sf = gha_1_sf,
                    product_id = "VNP46A3",
                    date = ymd("2020-01-01"),
                    bearer = bearer,
-                   variable = "NearNadir_Composite_Snow_Free_Quality")
+                   variable = "NearNadir_Composite_Snow_Free")
+
+r_ntl2 <- bm_raster(roi_sf = gha_1_sf,
+                    product_id = "VNP46A3",
+                    date = ymd("2020-01-01"),
+                    bearer = bearer,
+                    variable = "NearNadir_Composite_Snow_Free_Quality")
 
 
 roi_sf = gha_1_sf

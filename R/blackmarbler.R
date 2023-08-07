@@ -84,9 +84,9 @@ pad3 <- function(x){
 }
 pad3 <- Vectorize(pad3)
 
-
 file_to_raster <- function(f,
-                           variable){
+                           variable,
+                           quality_flag_rm){
   # Converts h5 file to raster.
   # ARGS
   # --f: Filepath to h5 file
@@ -103,6 +103,7 @@ file_to_raster <- function(f,
   ## Data
   h5_data <- H5Fopen(f)
 
+  #### Daily
   if(f %>% str_detect("VNP46A1|VNP46A2")){
 
     tile_i <- f %>% str_extract("h\\d{2}v\\d{2}")
@@ -118,26 +119,52 @@ file_to_raster <- function(f,
     xMax <- max(grid_i_sf_box$xmax) %>% round()
     yMax <- max(grid_i_sf_box$ymax) %>% round()
 
+    if(!(variable %in% names(h5_data$HDFEOS$GRIDS$VNP_Grid_DNB$`Data Fields`))){
+      warning(paste0("'", variable, "'",
+                     " not a valid variable option. Valid options include:\n",
+                     paste(names(h5_data$HDFEOS$GRIDS$VNP_Grid_DNB$`Data Fields`), collapse = "\n")
+      ))
+    }
+
     out <- h5_data$HDFEOS$GRIDS$VNP_Grid_DNB$`Data Fields`[[variable]]
+    qf  <- h5_data$HDFEOS$GRIDS$VNP_Grid_DNB$`Data Fields`$Mandatory_Quality_Flag
 
-    #names(h5_data$HDFEOS$GRIDS$VNP_Grid_DNB$`Data Fields`)
-    #h5_data$HDFEOS$GRIDS$VNP_Grid_DNB$`Data Fields`$QF_Cloud_Mask %>% as.vector() %>% table()
-    #if(product_id %in% c("VNP46A1", "VNP46A2")){
-    #out <- h5_data$HDFEOS$GRIDS$VNP_Grid_DNB$`Data Fields`$`DNB_At_Sensor_Radiance_500m`
+    if(length(quality_flag_rm) > 0){
+      for(val in quality_flag_rm){ # out[qf %in% quality_flag_rm] doesn't work, so loop
+        out[qf == val] <- NA
+      }
+    }
 
-    #}
-
-    #if(product_id == "VNP46A2"){
-    #  out <- h5_data$HDFEOS$GRIDS$VNP_Grid_DNB$`Data Fields`$`Gap_Filled_DNB_BRDF-Corrected_NTL`
-    #}
-
-    # print(names(h5_data$HDFEOS$GRIDS$VNP_Grid_DNB$`Data Fields`))
-
+    #### Monthly/Annually
   } else{
     lat <- h5_data$HDFEOS$GRIDS$VIIRS_Grid_DNB_2d$`Data Fields`$lat
     lon <- h5_data$HDFEOS$GRIDS$VIIRS_Grid_DNB_2d$`Data Fields`$lon
+
+    if(!(variable %in% names(h5_data$HDFEOS$GRIDS$VIIRS_Grid_DNB_2d$`Data Fields`))){
+      warning(paste0("'", variable, "'",
+                     " not a valid variable option. Valid options include:\n",
+                     paste(names(h5_data$HDFEOS$GRIDS$VIIRS_Grid_DNB_2d$`Data Fields`), collapse = "\n")
+      ))
+    }
+
     out <- h5_data$HDFEOS$GRIDS$VIIRS_Grid_DNB_2d$`Data Fields`[[variable]]
-    #land_water_mask <- h5_data$HDFEOS$GRIDS$VIIRS_Grid_DNB_2d$`Data Fields`$Land_Water_Mask
+
+    variable_short <- variable %>%
+      str_replace_all("_Num", "") %>%
+      str_replace_all("_Std", "")
+
+    qf_name <- paste0(variable_short, "_Quality")
+    if(qf_name %in% names(h5_data$HDFEOS$GRIDS$VIIRS_Grid_DNB_2d$`Data Fields`)){
+
+      qf <- h5_data$HDFEOS$GRIDS$VIIRS_Grid_DNB_2d$`Data Fields`[[paste0(variable, "_Quality")]]
+
+      if(length(quality_flag_rm) > 0){
+        for(val in quality_flag_rm){ # out[qf %in% quality_flag_rm] doesn't work, so loop
+          out[qf == val] <- NA
+        }
+      }
+
+    }
 
     if(class(out[1,1])[1] != "numeric"){
       out <- matrix(as.numeric(out),    # Convert to numeric matrix
@@ -149,7 +176,6 @@ file_to_raster <- function(f,
     xMax <- max(lon) %>% round()
     yMax <- max(lat) %>% round()
 
-    # print(names(h5_data$HDFEOS$GRIDS$VIIRS_Grid_DNB_2d$`Data Fields`))
   }
 
   ## Metadata
@@ -181,7 +207,7 @@ file_to_raster <- function(f,
   #extent(land_water_mask_r) <- rasExt
 
   #water to 0
-  outr[][outr[] %in% 65535] <- NA
+  #outr[][outr[] %in% 65535] <- NA # This is a fill value; always exclude
 
   h5closeAll()
 
@@ -291,6 +317,7 @@ download_raster <- function(file_name,
                             temp_dir,
                             variable,
                             bearer,
+                            quality_flag_rm,
                             quiet){
 
   year       <- file_name %>% substring(10,13)
@@ -307,7 +334,9 @@ download_raster <- function(file_name,
   if(quiet == FALSE) print(paste0("Downloading: ", file_name))
   tmp <- system(wget_command, intern = T, ignore.stdout = TRUE, ignore.stderr = TRUE)
 
-  r <- file_to_raster(file.path(temp_dir, product_id, year, day, file_name), variable)
+  r <- file_to_raster(file.path(temp_dir, product_id, year, day, file_name),
+                      variable,
+                      quality_flag_rm)
 
   return(r)
 }
@@ -361,6 +390,17 @@ define_date_name <- function(date_i, product_id){
 #' * For `product_id` `"VNP46A2"`, uses `Gap_Filled_DNB_BRDF-Corrected_NTL`.
 #' * For `product_id`s `"VNP46A3"` and `"VNP46A4"`, uses `NearNadir_Composite_Snow_Free`.
 #' For information on other variable choices, see [here](https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/archives/Document%20Archive/Science%20Data%20Product%20Documentation/VIIRS_Black_Marble_UG_v1.2_April_2021.pdf); for `VNP46A1`, see Table 3; for `VNP46A2` see Table 6; for `VNP46A3` and `VNP46A4`, see Table 9.
+#' @param quality_flag_rm Quality flag values to use to set values to `NA`. Each pixel has a quality flag value, where low quality values can be removed. Values are set to `NA` for each value in ther `quality_flag_rm` vector. (Default: `c(1, 2, 255)`).
+#' * For `VNP46A1` and `VNP46A2` (daily data):
+#' - `0`: High-quality, Persistent nighttime lights
+#' - `1`: High-quality, Ephemeral nighttime Lights
+#' - `2`: Poor-quality, Outlier, potential cloud contamination, or other issues
+#' - `255`: No retrieval, Fill value (masked out on ingestion)
+#' * For `VNP46A3` and `VNP46A4` (monthly and annual data):
+#' - `0`: Good-quality, The number of observations used for the composite is larger than 3
+#' - `1`: Poor-quality, The number of observations used for the composite is less than or equal to 3
+#' - `2`: Gap filled NTL based on historical data
+#' - `255`: Fill value
 #' @param check_all_tiles_exist Check whether all Black Marble nighttime light tiles exist for the region of interest. Sometimes not all tiles are available, so the full region of interest may not be covered. If `TRUE`, skips cases where not all tiles are available. (Default: `TRUE`).
 #' @param output_location_type Where to produce output; either `r_memory` or `file`. If `r_memory`, functions returns a raster in R. If `file`, function exports a `.tif` file and returns `NULL`.
 #'
@@ -406,6 +446,7 @@ bm_extract <- function(roi_sf,
                        date,
                        bearer,
                        variable = NULL,
+                       quality_flag_rm = c(1, 2, 255),
                        check_all_tiles_exist = TRUE,
                        output_location_type = "r_memory", # r_memory, file
                        aggregation_fun = c("mean"),
@@ -452,6 +493,7 @@ bm_extract <- function(roi_sf,
                              date = date_i,
                              bearer = bearer,
                              variable = variable,
+                             quality_flag_rm = quality_flag_rm,
                              check_all_tiles_exist = check_all_tiles_exist,
                              quiet = quiet,
                              temp_dir = temp_dir)
@@ -486,6 +528,7 @@ bm_extract <- function(roi_sf,
                                date = date_i,
                                bearer = bearer,
                                variable = variable,
+                               quality_flag_rm = quality_flag_rm,
                                check_all_tiles_exist = check_all_tiles_exist,
                                quiet = quiet,
                                temp_dir = temp_dir)
@@ -547,6 +590,17 @@ bm_extract <- function(roi_sf,
 #' * For `product_id` `"VNP46A2"`, uses `Gap_Filled_DNB_BRDF-Corrected_NTL`.
 #' * For `product_id`s `"VNP46A3"` and `"VNP46A4"`, uses `NearNadir_Composite_Snow_Free`.
 #' For information on other variable choices, see [here](https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/archives/Document%20Archive/Science%20Data%20Product%20Documentation/VIIRS_Black_Marble_UG_v1.2_April_2021.pdf); for `VNP46A1`, see Table 3; for `VNP46A2` see Table 6; for `VNP46A3` and `VNP46A4`, see Table 9.
+#' @param quality_flag_rm Quality flag values to use to set values to `NA`. Each pixel has a quality flag value, where low quality values can be removed. Values are set to `NA` for each value in ther `quality_flag_rm` vector. (Default: `c(1, 2, 255)`).
+#' * For `VNP46A1` and `VNP46A2` (daily data):
+#' - `0`: High-quality, Persistent nighttime lights
+#' - `1`: High-quality, Ephemeral nighttime Lights
+#' - `2`: Poor-quality, Outlier, potential cloud contamination, or other issues
+#' - `255`: No retrieval, Fill value (masked out on ingestion)
+#' * For `VNP46A3` and `VNP46A4` (monthly and annual data):
+#' - `0`: Good-quality, The number of observations used for the composite is larger than 3
+#' - `1`: Poor-quality, The number of observations used for the composite is less than or equal to 3
+#' - `2`: Gap filled NTL based on historical data
+#' - `255`: Fill value
 #' @param check_all_tiles_exist Check whether all Black Marble nighttime light tiles exist for the region of interest. Sometimes not all tiles are available, so the full region of interest may not be covered. If `TRUE`, skips cases where not all tiles are available. (Default: `TRUE`).
 #' @param output_location_type Where to produce output; either `r_memory` or `file`. If `r_memory`, functions returns a raster in R. If `file`, function exports a `.tif` file and returns `NULL`.
 #'
@@ -606,6 +660,7 @@ bm_raster <- function(roi_sf,
                       date,
                       bearer,
                       variable = NULL,
+                      quality_flag_rm = c(1, 2, 255),
                       check_all_tiles_exist = TRUE,
                       output_location_type = "r_memory", # r_memory, file
                       file_dir = NULL,
@@ -649,6 +704,7 @@ bm_raster <- function(roi_sf,
                              date = date_i,
                              bearer = bearer,
                              variable = variable,
+                             quality_flag_rm = quality_flag_rm,
                              check_all_tiles_exist = check_all_tiles_exist,
                              quiet = quiet,
                              temp_dir = temp_dir)
@@ -668,6 +724,7 @@ bm_raster <- function(roi_sf,
                                date = date_i,
                                bearer = bearer,
                                variable = variable,
+                               quality_flag_rm = quality_flag_rm,
                                check_all_tiles_exist = check_all_tiles_exist,
                                quiet = quiet,
                                temp_dir = temp_dir)
@@ -707,6 +764,7 @@ bm_raster_i <- function(roi_sf,
                         date,
                         bearer,
                         variable,
+                        quality_flag_rm,
                         check_all_tiles_exist,
                         quiet,
                         temp_dir){
@@ -775,7 +833,7 @@ bm_raster_i <- function(roi_sf,
   unlink(file.path(temp_dir, product_id), recursive = T)
 
   r_list <- lapply(bm_files_df$name, function(name_i){
-    download_raster(name_i, temp_dir, variable, bearer, quiet)
+    download_raster(name_i, temp_dir, variable, bearer, quality_flag_rm, quiet)
   })
 
   if(length(r_list) == 1){

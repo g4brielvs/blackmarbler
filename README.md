@@ -7,12 +7,12 @@ Create Georeferenced Rasters of Nighttime Lights from [NASA Black Marble data](h
 * [Bearer token](#token)
 * [Functions](#function)
 * [Quick start](#quickstart)
-  * [Setup](#setup)
-  * [Make raster](#raster)
-  * [Make raster stack across multiple time periods](#stack)
-  * [Make map](#map)
-  * [Make figure of trends in nighttime lights](#trends)
-  * [Workflow to update data](#update-data)
+* [Setup](#setup)
+* [Make raster](#raster)
+* [Make raster stack across multiple time periods](#stack)
+* [Make map](#map)
+* [Make figure of trends in nighttime lights](#trends)
+* [Workflow to update data](#update-data)
 
 ## Overview <a name="overview"></a>
 
@@ -46,7 +46,7 @@ The package provides two functions.
 Both functions take the following arguments:
 
 _Required arguments_
- 
+
 * __roi_sf:__ Region of interest; sf polygon. Must be in the [WGS 84 (epsg:4326)](https://epsg.io/4326) coordinate reference system. For `bm_extract`, aggregates nighttime lights within each polygon of `roi_sf`.
 
 * __product_id:__ One of the following: 
@@ -55,13 +55,13 @@ _Required arguments_
   - `"VNP46A2"`: Daily (corrected)
   - `"VNP46A3"`: Monthly
   - `"VNP46A4"`: Annual
-  
+
 * __date:__  Date of raster data. Entering one date will produce a raster. Entering multiple dates will produce a raster stack. 
 
   - For `product_id`s `"VNP46A1"` and `"VNP46A2"`, a date (eg, `"2021-10-03"`). 
   - For `product_id` `"VNP46A3"`, a date or year-month (e.g., `"2021-10-01"`, where the day will be ignored, or `"2021-10"`).
   - For `product_id` `"VNP46A4"`, year or date  (e.g., `"2021-10-01"`, where the month and day will be ignored, or `2021`). 
-  
+
 * __bearer:__ NASA bearer token. For instructions on how to create a token, see [here](https://github.com/ramarty/blackmarbler#bearer-token-).
 
 _Optional arguments_
@@ -72,10 +72,24 @@ _Optional arguments_
   - For `product_id` `"VNP46A2"`, uses `Gap_Filled_DNB_BRDF-Corrected_NTL`. 
   - For `product_id`s `"VNP46A3"` and `"VNP46A4"`, uses `NearNadir_Composite_Snow_Free`. 
 
+* __quality_flag_rm:__ Quality flag values to use to set values to `NA`. Each pixel has a quality flag value, where low quality values can be removed. Values are set to `NA` for each value in ther `quality_flag_rm` vector. (Default: `c(1, 2, 255)`).
+
+  - For `VNP46A1` and `VNP46A2` (daily data):
+    - `0`: High-quality, Persistent nighttime lights
+    - `1`: High-quality, Ephemeral nighttime Lights
+    - `2`: Poor-quality, Outlier, potential cloud contamination, or other issues
+    - `255`: No retrieval, Fill value (masked out on ingestion)
+    
+  - For `VNP46A3` and `VNP46A4` (monthly and annual data):
+    - `0`: Good-quality, The number of observations used for the composite is larger than 3
+    - `1`: Poor-quality, The number of observations used for the composite is less than or equal to 3
+    - `2`: Gap filled NTL based on historical data
+    - `255`: Fill value
+
 * __output_location_type:__ Where output should be stored (default: `r_memory`). Either:
 
-  - `r_memory` where the function will return an output in R
-  - `file` where the function will export the data as a file. For `bm_raster`, a `.tif` file will be saved; for `bm_extract`, a `.Rds` file will be saved. A file is saved for each date. Consequently, if `date = c(2018, 2019, 2020)`, three datasets will be saved: one for each year. Saving a dataset for each date can facilitate re-running the function later and only downloading data for dates where data have not been downloaded.
+- `r_memory` where the function will return an output in R
+- `file` where the function will export the data as a file. For `bm_raster`, a `.tif` file will be saved; for `bm_extract`, a `.Rds` file will be saved. A file is saved for each date. Consequently, if `date = c(2018, 2019, 2020)`, three datasets will be saved: one for each year. Saving a dataset for each date can facilitate re-running the function later and only downloading data for dates where data have not been downloaded.
 
 If `output_location_type = "file"`, the following arguments can be used:
 
@@ -118,21 +132,21 @@ lights for Ghana.
 ```r
 ### Daily data: raster for February 5, 2021
 r_20210205 <- bm_raster(roi_sf = roi_sf,
-                        product_id = "VNP46A2",
-                        date = "2021-02-05",
-                        bearer = bearer)
-  
+product_id = "VNP46A2",
+date = "2021-02-05",
+bearer = bearer)
+
 ### Monthly data: raster for October 2021
 r_202110 <- bm_raster(roi_sf = roi_sf,
-                      product_id = "VNP46A3",
-                      date = "2021-10-01", # The day is ignored
-                      bearer = bearer)
+product_id = "VNP46A3",
+date = "2021-10-01", # The day is ignored
+bearer = bearer)
 
 ### Annual data: raster for 2021
 r_2021 <- bm_raster(roi_sf = roi_sf,
-                    product_id = "VNP46A4",
-                    date = 2021,
-                    bearer = bearer)
+product_id = "VNP46A4",
+date = 2021,
+bearer = bearer)
 ```
 
 ### Make raster stack of nighttime lights across multiple time periods <a name="stack">
@@ -142,21 +156,21 @@ To extract data for multiple time periods, add multiple time periods to `date`. 
 ```r
 #### Daily data in March 2021
 r_daily <- bm_raster(roi_sf = roi_sf,
-                     product_id = "VNP46A3",
-                     date = seq.Date(from = ymd("2021-03-01"), to = ymd("2021-03-31"), by = "day"),
-                     bearer = bearer)
-                          
+product_id = "VNP46A3",
+date = seq.Date(from = ymd("2021-03-01"), to = ymd("2021-03-31"), by = "day"),
+bearer = bearer)
+
 #### Monthly aggregated data in 2021 and 2022
 r_monthly <- bm_raster(roi_sf = roi_sf,
-                       product_id = "VNP46A3",
-                       date = seq.Date(from = ymd("2021-01-01"), to = ymd("2022-12-01"), by = "month"),
-                       bearer = bearer)
-                          
+product_id = "VNP46A3",
+date = seq.Date(from = ymd("2021-01-01"), to = ymd("2022-12-01"), by = "month"),
+bearer = bearer)
+
 #### Yearly aggregated data in 2012 and 2021
 r_annual <- bm_raster(roi_sf = roi_sf,
-                      product_id = "VNP46A4",
-                      date = 2012:2021,
-                      bearer = bearer)
+product_id = "VNP46A4",
+date = 2012:2021,
+bearer = bearer)
 ```
 
 ### Map of nighttime lights <a name="map">
@@ -166,10 +180,10 @@ Using one of the rasters, we can make a map of nighttime lights
 ```r
 #### Make raster
 r <- bm_raster(roi_sf = roi_sf,
-               product_id = "VNP46A4",
-               date = 2021,
-               bearer = bearer)
-                    
+product_id = "VNP46A4",
+date = 2021,
+bearer = bearer)
+
 #### Prep data
 r <- r %>% mask(roi_sf) 
 
@@ -184,18 +198,18 @@ r_df$value_adj <- log(r_df$value+1)
 
 ##### Map 
 p <- ggplot() +
-  geom_raster(data = r_df, 
-              aes(x = x, y = y, 
-                  fill = value_adj)) +
-  scale_fill_gradient2(low = "black",
-                       mid = "yellow",
-                       high = "red",
-                       midpoint = 4.5) +
-  labs(title = "NTL, October 2021") +
-  coord_quickmap() + 
-  theme_void() +
-  theme(plot.title = element_text(face = "bold", hjust = 0.5),
-        legend.position = "none")
+geom_raster(data = r_df, 
+aes(x = x, y = y, 
+fill = value_adj)) +
+scale_fill_gradient2(low = "black",
+mid = "yellow",
+high = "red",
+midpoint = 4.5) +
+labs(title = "NTL, October 2021") +
+coord_quickmap() + 
+theme_void() +
+theme(plot.title = element_text(face = "bold", hjust = 0.5),
+legend.position = "none")
 ```
 
 <p align="center">
@@ -209,22 +223,22 @@ We can use the `bm_extract` function to observe changes in nighttime lights over
 ```r
 #### Extract annual data
 ntl_df <- bm_extract(roi_sf = roi_sf,
-                     product_id = "VNP46A4",
-                     date = 2012:2022,
-                     bearer = bearer)
+product_id = "VNP46A4",
+date = 2012:2022,
+bearer = bearer)
 
 #### Trends over time
-  ntl_df %>%
-    ggplot() +
-    geom_col(aes(x = date,
-                 y = ntl_mean),
-             fill = "darkorange") +
-    facet_wrap(~NAME_1) +
-    labs(x = NULL,
-         y = "NTL Luminosity",
-         title = "Ghana Admin Level 1: Annual Average Nighttime Lights") +
-    theme_minimal() +
-    theme(strip.text = element_text(face = "bold")) 
+ntl_df %>%
+ggplot() +
+geom_col(aes(x = date,
+y = ntl_mean),
+fill = "darkorange") +
+facet_wrap(~NAME_1) +
+labs(x = NULL,
+y = "NTL Luminosity",
+title = "Ghana Admin Level 1: Annual Average Nighttime Lights") +
+theme_minimal() +
+theme(strip.text = element_text(face = "bold")) 
 ```
 
 <p align="center">
@@ -248,17 +262,17 @@ dir.create(file.path(getwd(), "bm_files", "daily"))
 # data is produced on roughly a week delay, the function will only extract data that exists; 
 # it will skip extracting data for dates where data has not yet been produced by NASA Black Marble. 
 bm_extract(roi_sf = roi_sf,
-           product_id = "VNP46A2",
-           date = seq.Date(from = ymd("2023-01-01"), to = Sys.Date(), by = 1),
-           bearer = bearer,
-           output_location_type = "file",
-           file_dir = file.path(getwd(), "bm_files", "daily"))
+product_id = "VNP46A2",
+date = seq.Date(from = ymd("2023-01-01"), to = Sys.Date(), by = 1),
+bearer = bearer,
+output_location_type = "file",
+file_dir = file.path(getwd(), "bm_files", "daily"))
 
 # Append daily-level datasets into one file
 file.path(getwd(), "bm_files", "daily") %>%
-  list.files(pattern = "*.Rds",
-             full.names = T) %>%
-  map_df(readRDS) %>%
-  saveRDS(file.path(getwd(), "bm_files", "ntl_daily.Rds"))
+list.files(pattern = "*.Rds",
+full.names = T) %>%
+map_df(readRDS) %>%
+saveRDS(file.path(getwd(), "bm_files", "ntl_daily.Rds"))
 ```
 
