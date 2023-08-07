@@ -373,7 +373,7 @@ define_date_name <- function(date_i, product_id){
 
 #' Extract and Aggregate Black Marble Data
 #'
-#' Make a raster of nighttime lights from [NASA Black Marble data](https://blackmarble.gsfc.nasa.gov/)
+#' Extract and aggregate nighttime lights data from [NASA Black Marble data](https://blackmarble.gsfc.nasa.gov/)
 
 #' @param roi_sf Region of interest; sf polygon. Must be in the [WGS 84 (epsg:4326)](https://epsg.io/4326) coordinate reference system.
 #' @param product_id One of the following:
@@ -386,6 +386,7 @@ define_date_name <- function(date_i, product_id){
 #' * For `product_id` `"VNP46A3"`, a date or year-month (e.g., `"2021-10-01"`, where the day will be ignored, or `"2021-10"`).
 #' * For `product_id` `"VNP46A4"`, year or date  (e.g., `"2021-10-01"`, where the month and day will be ignored, or `2021`).
 #' @param bearer NASA bearer token. For instructions on how to create a token, see [here](https://github.com/ramarty/blackmarbler#bearer-token-).
+#' @param aggregation_fun Function used to aggregate nighttime lights data to polygons; this values is passed to the `fun` argument in [exactextractr::exact_extract](https://github.com/isciences/exactextractr) (Default: `mean`).
 #' @param variable Variable to used to create raster (default: `NULL`). If `NULL`, uses the following default variables:
 #' * For `product_id` `:VNP46A1"`, uses `DNB_At_Sensor_Radiance_500m`.
 #' * For `product_id` `"VNP46A2"`, uses `Gap_Filled_DNB_BRDF-Corrected_NTL`.
@@ -407,11 +408,11 @@ define_date_name <- function(date_i, product_id){
 #' - `2`: Gap filled NTL based on historical data
 #' - `255`: Fill value
 #' @param check_all_tiles_exist Check whether all Black Marble nighttime light tiles exist for the region of interest. Sometimes not all tiles are available, so the full region of interest may not be covered. If `TRUE`, skips cases where not all tiles are available. (Default: `TRUE`).
-#' @param output_location_type Where to produce output; either `r_memory` or `file`. If `r_memory`, functions returns a raster in R. If `file`, function exports a `.tif` file and returns `NULL`.
+#' @param output_location_type Where to produce output; either `memory` or `file`. If `memory`, functions returns a raster in R. If `file`, function exports a `.tif` file and returns `NULL`.
 #'
 #' For `output_location_type = file`:
 #' @param file_dir The directory where data should be exported (default: `NULL`, so the working directory will be used)
-#' @param file_prefix: Prefix to add to the file to be saved. The file will be saved as the following: `[file_prefix][product_id]_t[date].tif`
+#' @param file_prefix Prefix to add to the file to be saved. The file will be saved as the following: `[file_prefix][product_id]_t[date].tif`
 #' @param file_skip_if_exists Whether the function should first check wither the file already exists, and to skip downloading or extracting data if the data for that date if the file already exists (default: `TRUE`).
 #' @param quiet Suppress output that show downloading progress and other messages. (Default: `FALSE`).
 #'
@@ -450,11 +451,11 @@ bm_extract <- function(roi_sf,
                        product_id,
                        date,
                        bearer,
+                       aggregation_fun = c("mean"),
                        variable = NULL,
                        quality_flag_rm = 255,
                        check_all_tiles_exist = TRUE,
-                       output_location_type = "r_memory", # r_memory, file
-                       aggregation_fun = c("mean"),
+                       output_location_type = "memory", # memory, file
                        file_dir = NULL,
                        file_prefix = NULL,
                        file_skip_if_exists = TRUE,
@@ -611,11 +612,11 @@ bm_extract <- function(roi_sf,
 #' - `2`: Gap filled NTL based on historical data
 #' - `255`: Fill value
 #' @param check_all_tiles_exist Check whether all Black Marble nighttime light tiles exist for the region of interest. Sometimes not all tiles are available, so the full region of interest may not be covered. If `TRUE`, skips cases where not all tiles are available. (Default: `TRUE`).
-#' @param output_location_type Where to produce output; either `r_memory` or `file`. If `r_memory`, functions returns a raster in R. If `file`, function exports a `.tif` file and returns `NULL`.
+#' @param output_location_type Where to produce output; either `memory` or `file`. If `memory`, functions returns a raster in R. If `file`, function exports a `.tif` file and returns `NULL`.
 #'
 #' For `output_location_type = file`:
 #' @param file_dir The directory where data should be exported (default: `NULL`, so the working directory will be used)
-#' @param file_prefix: Prefix to add to the file to be saved. The file will be saved as the following: `[file_prefix][product_id]_t[date].tif`
+#' @param file_prefix Prefix to add to the file to be saved. The file will be saved as the following: `[file_prefix][product_id]_t[date].tif`
 #' @param file_skip_if_exists Whether the function should first check wither the file already exists, and to skip downloading or extracting data if the data for that date if the file already exists (default: `TRUE`).
 #' @param quiet Suppress output that show downloading progress and other messages. (Default: `FALSE`).
 #'
@@ -671,7 +672,7 @@ bm_raster <- function(roi_sf,
                       variable = NULL,
                       quality_flag_rm = 255,
                       check_all_tiles_exist = TRUE,
-                      output_location_type = "r_memory", # r_memory, file
+                      output_location_type = "memory", # memory, file
                       file_dir = NULL,
                       file_prefix = NULL,
                       file_skip_if_exists = TRUE,
