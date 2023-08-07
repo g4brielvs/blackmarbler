@@ -391,11 +391,15 @@ define_date_name <- function(date_i, product_id){
 #' * For `product_id`s `"VNP46A3"` and `"VNP46A4"`, uses `NearNadir_Composite_Snow_Free`.
 #' For information on other variable choices, see [here](https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/archives/Document%20Archive/Science%20Data%20Product%20Documentation/VIIRS_Black_Marble_UG_v1.2_April_2021.pdf); for `VNP46A1`, see Table 3; for `VNP46A2` see Table 6; for `VNP46A3` and `VNP46A4`, see Table 9.
 #' @param quality_flag_rm Quality flag values to use to set values to `NA`. Each pixel has a quality flag value, where low quality values can be removed. Values are set to `NA` for each value in ther `quality_flag_rm` vector. (Default: `c(1, 2, 255)`).
+#'
+#'
 #' For `VNP46A1` and `VNP46A2` (daily data):
 #' - `0`: High-quality, Persistent nighttime lights
 #' - `1`: High-quality, Ephemeral nighttime Lights
 #' - `2`: Poor-quality, Outlier, potential cloud contamination, or other issues
 #' - `255`: No retrieval, Fill value (masked out on ingestion)
+#'
+#'
 #' For `VNP46A3` and `VNP46A4` (monthly and annual data):
 #' - `0`: Good-quality, The number of observations used for the composite is larger than 3
 #' - `1`: Poor-quality, The number of observations used for the composite is less than or equal to 3
