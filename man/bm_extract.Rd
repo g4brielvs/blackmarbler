@@ -10,11 +10,14 @@ bm_extract(
   date,
   bearer,
   variable = NULL,
+  quality_flag_rm = c(1, 2, 255),
+  check_all_tiles_exist = TRUE,
   output_location_type = "r_memory",
   aggregation_fun = c("mean"),
   file_dir = NULL,
   file_prefix = NULL,
-  file_skip_if_exists = TRUE
+  file_skip_if_exists = TRUE,
+  quiet = FALSE
 )
 }
 \arguments{
@@ -45,6 +48,28 @@ bm_extract(
 For information on other variable choices, see \href{https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/archives/Document\%20Archive/Science\%20Data\%20Product\%20Documentation/VIIRS_Black_Marble_UG_v1.2_April_2021.pdf}{here}; for \code{VNP46A1}, see Table 3; for \code{VNP46A2} see Table 6; for \code{VNP46A3} and \code{VNP46A4}, see Table 9.
 }}
 
+\item{quality_flag_rm}{Quality flag values to use to set values to \code{NA}. Each pixel has a quality flag value, where low quality values can be removed. Values are set to \code{NA} for each value in ther \code{quality_flag_rm} vector. (Default: \code{c(1, 2, 255)}).
+\itemize{
+\item For \code{VNP46A1} and \code{VNP46A2} (daily data):
+}
+\itemize{
+\item \code{0}: High-quality, Persistent nighttime lights
+\item \code{1}: High-quality, Ephemeral nighttime Lights
+\item \code{2}: Poor-quality, Outlier, potential cloud contamination, or other issues
+\item \code{255}: No retrieval, Fill value (masked out on ingestion)
+}
+\itemize{
+\item For \code{VNP46A3} and \code{VNP46A4} (monthly and annual data):
+}
+\itemize{
+\item \code{0}: Good-quality, The number of observations used for the composite is larger than 3
+\item \code{1}: Poor-quality, The number of observations used for the composite is less than or equal to 3
+\item \code{2}: Gap filled NTL based on historical data
+\item \code{255}: Fill value
+}}
+
+\item{check_all_tiles_exist}{Check whether all Black Marble nighttime light tiles exist for the region of interest. Sometimes not all tiles are available, so the full region of interest may not be covered. If \code{TRUE}, skips cases where not all tiles are available. (Default: \code{TRUE}).}
+
 \item{output_location_type}{Where to produce output; either \code{r_memory} or \code{file}. If \code{r_memory}, functions returns a raster in R. If \code{file}, function exports a \code{.tif} file and returns \code{NULL}.
 
 For \code{output_location_type = file}:}
@@ -52,6 +77,8 @@ For \code{output_location_type = file}:}
 \item{file_dir}{The directory where data should be exported (default: \code{NULL}, so the working directory will be used)}
 
 \item{file_skip_if_exists}{Whether the function should first check wither the file already exists, and to skip downloading or extracting data if the data for that date if the file already exists (default: \code{TRUE}).}
+
+\item{quiet}{Suppress output that show downloading progress and other messages. (Default: \code{FALSE}).}
 
 \item{file_prefix:}{Prefix to add to the file to be saved. The file will be saved as the following: \verb{[file_prefix][product_id]_t[date].tif}}
 }

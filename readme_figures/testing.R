@@ -1,6 +1,6 @@
 
 #remove.packages("blackmarbler")
-#devtools::install_github("ramarty/blackmarbler")
+devtools::install_github("ramarty/blackmarbler")
 library(purrr)
 library(furrr)
 library(stringr)
@@ -11,7 +11,7 @@ library(sf)
 library(lubridate)
 library(geodata)
 library(exactextractr)
-#library(blackmarbler)
+library(blackmarbler)
 
 bearer <- read.csv("~/Desktop/bearer_bm.csv") %>%
   pull(token)

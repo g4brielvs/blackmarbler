@@ -20,5 +20,6 @@ Imports:
   lubridate,
   raster,
   sf,
+  exactextractr,
   stringr,
   rhdf5
