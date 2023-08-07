@@ -10,7 +10,7 @@ bm_raster(
   date,
   bearer,
   variable = NULL,
-  quality_flag_rm = c(1, 2, 255),
+  quality_flag_rm = 255,
   check_all_tiles_exist = TRUE,
   output_location_type = "r_memory",
   file_dir = NULL,
@@ -47,7 +47,7 @@ bm_raster(
 For information on other variable choices, see \href{https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/archives/Document\%20Archive/Science\%20Data\%20Product\%20Documentation/VIIRS_Black_Marble_UG_v1.2_April_2021.pdf}{here}; for \code{VNP46A1}, see Table 3; for \code{VNP46A2} see Table 6; for \code{VNP46A3} and \code{VNP46A4}, see Table 9.
 }}
 
-\item{quality_flag_rm}{Quality flag values to use to set values to \code{NA}. Each pixel has a quality flag value, where low quality values can be removed. Values are set to \code{NA} for each value in ther \code{quality_flag_rm} vector. (Default: \code{c(1, 2, 255)}).
+\item{quality_flag_rm}{Quality flag values to use to set values to \code{NA}. Each pixel has a quality flag value, where low quality values can be removed. Values are set to \code{NA} for each value in ther \code{quality_flag_rm} vector. (Default: \code{c(255)}).
 
 For \code{VNP46A1} and \code{VNP46A2} (daily data):
 \itemize{

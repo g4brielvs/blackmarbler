@@ -149,16 +149,17 @@ file_to_raster <- function(f,
 
     out <- h5_data$HDFEOS$GRIDS$VIIRS_Grid_DNB_2d$`Data Fields`[[variable]]
 
-    variable_short <- variable %>%
-      str_replace_all("_Num", "") %>%
-      str_replace_all("_Std", "")
+    if(length(quality_flag_rm) > 0){
 
-    qf_name <- paste0(variable_short, "_Quality")
-    if(qf_name %in% names(h5_data$HDFEOS$GRIDS$VIIRS_Grid_DNB_2d$`Data Fields`)){
+      variable_short <- variable %>%
+        str_replace_all("_Num", "") %>%
+        str_replace_all("_Std", "")
 
-      qf <- h5_data$HDFEOS$GRIDS$VIIRS_Grid_DNB_2d$`Data Fields`[[paste0(variable, "_Quality")]]
+      qf_name <- paste0(variable_short, "_Quality")
+      if(qf_name %in% names(h5_data$HDFEOS$GRIDS$VIIRS_Grid_DNB_2d$`Data Fields`)){
 
-      if(length(quality_flag_rm) > 0){
+        qf <- h5_data$HDFEOS$GRIDS$VIIRS_Grid_DNB_2d$`Data Fields`[[paste0(variable, "_Quality")]]
+
         for(val in quality_flag_rm){ # out[qf %in% quality_flag_rm] doesn't work, so loop
           out[qf == val] <- NA
         }
@@ -390,7 +391,7 @@ define_date_name <- function(date_i, product_id){
 #' * For `product_id` `"VNP46A2"`, uses `Gap_Filled_DNB_BRDF-Corrected_NTL`.
 #' * For `product_id`s `"VNP46A3"` and `"VNP46A4"`, uses `NearNadir_Composite_Snow_Free`.
 #' For information on other variable choices, see [here](https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/archives/Document%20Archive/Science%20Data%20Product%20Documentation/VIIRS_Black_Marble_UG_v1.2_April_2021.pdf); for `VNP46A1`, see Table 3; for `VNP46A2` see Table 6; for `VNP46A3` and `VNP46A4`, see Table 9.
-#' @param quality_flag_rm Quality flag values to use to set values to `NA`. Each pixel has a quality flag value, where low quality values can be removed. Values are set to `NA` for each value in ther `quality_flag_rm` vector. (Default: `c(1, 2, 255)`).
+#' @param quality_flag_rm Quality flag values to use to set values to `NA`. Each pixel has a quality flag value, where low quality values can be removed. Values are set to `NA` for each value in ther `quality_flag_rm` vector. (Default: `c(255)`).
 #'
 #'
 #' For `VNP46A1` and `VNP46A2` (daily data):
@@ -450,7 +451,7 @@ bm_extract <- function(roi_sf,
                        date,
                        bearer,
                        variable = NULL,
-                       quality_flag_rm = c(1, 2, 255),
+                       quality_flag_rm = 255,
                        check_all_tiles_exist = TRUE,
                        output_location_type = "r_memory", # r_memory, file
                        aggregation_fun = c("mean"),
@@ -594,7 +595,7 @@ bm_extract <- function(roi_sf,
 #' * For `product_id` `"VNP46A2"`, uses `Gap_Filled_DNB_BRDF-Corrected_NTL`.
 #' * For `product_id`s `"VNP46A3"` and `"VNP46A4"`, uses `NearNadir_Composite_Snow_Free`.
 #' For information on other variable choices, see [here](https://ladsweb.modaps.eosdis.nasa.gov/api/v2/content/archives/Document%20Archive/Science%20Data%20Product%20Documentation/VIIRS_Black_Marble_UG_v1.2_April_2021.pdf); for `VNP46A1`, see Table 3; for `VNP46A2` see Table 6; for `VNP46A3` and `VNP46A4`, see Table 9.
-#' @param quality_flag_rm Quality flag values to use to set values to `NA`. Each pixel has a quality flag value, where low quality values can be removed. Values are set to `NA` for each value in ther `quality_flag_rm` vector. (Default: `c(1, 2, 255)`).
+#' @param quality_flag_rm Quality flag values to use to set values to `NA`. Each pixel has a quality flag value, where low quality values can be removed. Values are set to `NA` for each value in ther `quality_flag_rm` vector. (Default: `c(255)`).
 #'
 #'
 #' For `VNP46A1` and `VNP46A2` (daily data):
@@ -668,7 +669,7 @@ bm_raster <- function(roi_sf,
                       date,
                       bearer,
                       variable = NULL,
-                      quality_flag_rm = c(1, 2, 255),
+                      quality_flag_rm = 255,
                       check_all_tiles_exist = TRUE,
                       output_location_type = "r_memory", # r_memory, file
                       file_dir = NULL,
