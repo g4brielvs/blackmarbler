@@ -48,19 +48,13 @@ For information on other variable choices, see \href{https://ladsweb.modaps.eosd
 }}
 
 \item{quality_flag_rm}{Quality flag values to use to set values to \code{NA}. Each pixel has a quality flag value, where low quality values can be removed. Values are set to \code{NA} for each value in ther \code{quality_flag_rm} vector. (Default: \code{c(1, 2, 255)}).
-\itemize{
-\item For \code{VNP46A1} and \code{VNP46A2} (daily data):
-}
+For \code{VNP46A1} and \code{VNP46A2} (daily data):
 \itemize{
 \item \code{0}: High-quality, Persistent nighttime lights
 \item \code{1}: High-quality, Ephemeral nighttime Lights
 \item \code{2}: Poor-quality, Outlier, potential cloud contamination, or other issues
 \item \code{255}: No retrieval, Fill value (masked out on ingestion)
-}
-\itemize{
-\item For \code{VNP46A3} and \code{VNP46A4} (monthly and annual data):
-}
-\itemize{
+For \code{VNP46A3} and \code{VNP46A4} (monthly and annual data):
 \item \code{0}: Good-quality, The number of observations used for the composite is larger than 3
 \item \code{1}: Poor-quality, The number of observations used for the composite is less than or equal to 3
 \item \code{2}: Gap filled NTL based on historical data

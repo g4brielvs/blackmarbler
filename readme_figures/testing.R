@@ -1,5 +1,5 @@
 
-#remove.packages("blackmarbler")
+remove.packages("blackmarbler")
 devtools::install_github("ramarty/blackmarbler")
 library(purrr)
 library(furrr)
