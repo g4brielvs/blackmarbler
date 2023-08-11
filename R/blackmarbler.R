@@ -826,8 +826,24 @@ bm_raster_i <- function(roi_sf,
   bm_tiles_sf <- bm_tiles_sf[!(bm_tiles_sf$TileID %>% str_detect("v00")),]
 
   #inter <- st_intersects(bm_tiles_sf, roi_1row_sf, sparse = F) %>% as.vector()
-  inter <- st_intersects(bm_tiles_sf, roi_sf, sparse = F) %>%
-    apply(1, sum)
+  # inter <- st_intersects(bm_tiles_sf, roi_sf, sparse = F) %>%
+  #   apply(1, sum)
+
+
+  inter <- tryCatch(
+    {
+      inter <- st_intersects(bm_tiles_sf, roi_sf, sparse = F) %>%
+        apply(1, sum)
+
+      inter
+    },
+    error = function(e){
+      warning("Issue with `roi_sf` intersecting with blackmarble tiles; try buffering by a width of 0: eg, st_buffer(roi_sf, 0)")
+      stop("Issue with `roi_sf` intersecting with blackmarble tiles; try buffering by a width of 0: eg, st_buffer(roi_sf, 0)")
+      #stop(st_intersects(bm_tiles_sf, roi_sf, sparse = F))
+    }
+  )
+
 
   grid_use_sf <- bm_tiles_sf[inter>0,]
 
@@ -843,6 +859,7 @@ bm_raster_i <- function(roi_sf,
   unlink(file.path(temp_dir, product_id), recursive = T)
 
   r_list <- lapply(bm_files_df$name, function(name_i){
+    #if(quiet == FALSE) print(paste0("Downloading ", nrow(bm_files_df), " tiles."))
     download_raster(name_i, temp_dir, variable, bearer, quality_flag_rm, quiet)
   })
 
